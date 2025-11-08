@@ -1,5 +1,11 @@
+# Terraform state and sensitive files
 terraform/.terraform*
 terraform/terraform*
-terraform/credentials*
+terraform/credentials.tfvars
 
-packer/90001-pkr-ubuntu-noble-1/*credentials*
+# Packer sensitive files
+packer/90001-pkr-ubuntu-noble-1/credentials.pkrvars.hcl
+
+# Allow example credential files (templates for users)
+!terraform/credentials.tfvars.example
+!packer/90001-pkr-ubuntu-noble-1/credentials.pkrvars.hcl.example
