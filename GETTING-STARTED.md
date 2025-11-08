@@ -6,9 +6,9 @@ This guide will walk you through forking and customizing this homelab boilerplat
 
 Before you begin, ensure you have:
 
-- ✅ A server running Proxmox VE (tested on 8.x)
+- ✅ A server running Proxmox VE (tested on 9.x)
 - ✅ Basic knowledge of Terraform and Packer
-- ✅ SSH key pair generated (`ssh-keygen -t rsa -b 4096`)
+- ✅ SSH key pair generated (`ssh-keygen -t rsa -b 4096`) I personnaly use a [Yubikey](https://www.yubico.com/get-yubikey/)
 - ✅ [Terraform](https://www.terraform.io/downloads) installed locally (>= 1.0)
 - ✅ [Packer](https://www.packer.io/downloads) installed locally (>= 1.9)
 
@@ -25,7 +25,7 @@ Before you begin, ensure you have:
 
 ### 2.1 Update Proxmox Node Name
 
-The default Proxmox node name is `asgard`. If your node has a different name:
+My Proxmox node name is `asgard`. If your node has a different name:
 
 1. **In Packer** (`packer/90001-pkr-ubuntu-noble-1/build.pkr.hcl`):
    ```hcl
@@ -179,7 +179,7 @@ python3 -c 'import crypt; print(crypt.crypt("yourpassword", crypt.mksalt(crypt.M
 
 ### 4.1 Upload Ubuntu ISO
 
-Download Ubuntu 24.04 LTS ISO to your Proxmox server:
+Download Ubuntu 24.04 LTS ISO to your Proxmox server by downloading it on Proxmox UI or by uploading it manually :
 
 ```bash
 # On Proxmox server
@@ -204,7 +204,7 @@ packer init .
 # Validate configuration
 packer validate -var-file="credentials.pkrvars.hcl" .
 
-# Build the template (takes ~10-15 minutes)
+# Build the template (takes ~5 minutes)
 packer build -var-file="credentials.pkrvars.hcl" .
 ```
 
@@ -256,13 +256,22 @@ In Proxmox web interface:
 # Test connection (port 2222!)
 ssh -p 2222 odin@10.10.10.101
 
-# Or configure ~/.ssh/config:
+# Or configure ~/.ssh/config with basic ssh public key:
 cat >> ~/.ssh/config << EOF
 Host homelab-master-1
     HostName 10.10.10.101
     Port 2222
     User odin
     IdentityFile ~/.ssh/id_rsa
+EOF
+
+# Or configure ~/.ssh/config yubikey ssh public key:
+cat >> ~/.ssh/config << EOF
+Host homelab-master-1
+    HostName 10.10.10.101
+    Port 2222
+    User odin
+    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib (this path is for MacOS, change it if using Linux)
 EOF
 
 # Then simply:
@@ -325,16 +334,16 @@ For detailed RKE2 setup, see: https://docs.rke2.io/install/ha
 - Ensure IPs aren't already in use on your network
 - Update IPs in Terraform files to avoid conflicts
 
-## Customization Ideas
+## Futur Changes that I will implement
 
-Now that your base infrastructure is running, consider:
+Now that the base infrastructure is running, I will:
 
-- 🔒 **Add Ansible** for configuration management
+- 🔒 **Add Ansible** for configuration management and RKE2 implementation
 - 🔐 **Setup Vault** for secrets management
 - 📊 **Deploy monitoring** (Prometheus + Grafana)
-- 🔄 **Add GitOps** with ArgoCD or Flux
+- 🔄 **Add GitOps** with ArgoCD
 - 🌐 **Setup Ingress** with Traefik or Nginx Ingress
-- 📦 **Deploy applications** to your K8s cluster
+- 📦 **Deploy various applications** to RKE2 cluster
 
 ## Next Steps
 
