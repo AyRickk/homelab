@@ -1,4 +1,4 @@
-# 🏠 Homelab - Infrastructure as Code
+# 🏠 Homelab Boilerplate - Proxmox + RKE2 Infrastructure as Code
 
 <div align="center">
 
@@ -8,243 +8,437 @@
 ![Kubernetes](https://img.shields.io/badge/RKE2-326CE5?style=for-the-badge&logo=kubernetes&logoColor=white)
 ![Ubuntu](https://img.shields.io/badge/Ubuntu%2024.04-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)
 
-**Infrastructure as Code pour cluster RKE2 sur Proxmox**
+**Production-ready template for deploying RKE2 clusters on Proxmox using Infrastructure as Code**
 
-[Documentation](./docs) • [Configuration](#-configuration) • [Démarrage rapide](#-démarrage-rapide)
+[📖 Documentation](./docs) • [🚀 Getting Started](./GETTING-STARTED.md) • [⚙️ Configuration](#-configuration)
 
 </div>
 
 ---
 
+> **🎯 What is this?**  
+> This is a **boilerplate/template repository** for building your own homelab infrastructure. Fork it, customize it, and deploy a production-ready Kubernetes cluster on Proxmox in minutes!
+
+## 💡 Why Use This Boilerplate?
+
+Stop starting from scratch every time you rebuild your homelab! This template provides:
+
+- ✨ **Battle-tested configurations** for Proxmox + RKE2
+- 🚀 **Ready to deploy** - Just update credentials and go
+- 📚 **Comprehensive documentation** - Learn as you build
+- 🔧 **Fully customizable** - Adapt to your network and needs
+- 🏗️ **Infrastructure as Code** - Reproducible, version-controlled infrastructure
+- 🔐 **Security hardened** - SSH best practices, no passwords
+
+**Perfect for:** Homelab enthusiasts, DevOps learners, Kubernetes experimenters, self-hosting advocates
+
 ## 📋 Table des matières
 
-- [À propos](#-à-propos)
+- [Features](#-features)
+- [Quick Start](#-quick-start)
 - [Architecture](#-architecture)
-- [Prérequis](#-prérequis)
-- [Structure du projet](#-structure-du-projet)
-- [Démarrage rapide](#-démarrage-rapide)
+- [Prerequisites](#-prerequisites)
+- [Getting Started](#-getting-started)
 - [Configuration](#-configuration)
-- [Utilisation](#-utilisation)
+- [Customization](#-customization)
 - [Documentation](#-documentation)
-- [Licence](#-licence)
+- [Contributing](#-contributing)
 
-## 🎯 À propos
+## ✨ Features
 
-Ce projet implémente une infrastructure complète de homelab basée sur **Proxmox**, entièrement gérée en tant que code (Infrastructure as Code). L'objectif est de déployer et maintenir un cluster **RKE2** (Rancher Kubernetes Engine 2) de manière reproductible et automatisée.
+This boilerplate includes everything you need to deploy a production-ready Kubernetes cluster:
 
-### Fonctionnalités principales
+### Infrastructure as Code
+- ✅ **Packer templates** for automated VM image creation
+- ✅ **Terraform modules** for infrastructure deployment
+- ✅ **Cloud-init** for automatic VM configuration
+- ✅ **Version controlled** - Track all changes in Git
 
-- ✅ **Templates VM automatisés** avec Packer (Ubuntu 24.04 LTS)
-- ✅ **Déploiement d'infrastructure** avec Terraform
-- ✅ **Cluster RKE2 haute disponibilité** (3 masters + 3 workers)
-- ✅ **Configuration réseau statique** avec cloud-init
-- ✅ **Sécurisation SSH** (authentification par clé uniquement, port personnalisé)
-- ✅ **Optimisations de performance** (VirtIO, iothread, CPU host passthrough)
+### Production-Ready Setup
+- ✅ **High availability** - 3 master nodes with etcd quorum
+- ✅ **Scalable workers** - 3 worker nodes (easily add more)
+- ✅ **Static networking** - Predictable IP addresses
+- ✅ **SSH hardening** - Key-only auth on non-standard port (2222)
+- ✅ **Performance optimized** - VirtIO, iothread, CPU passthrough
+
+### Comprehensive Documentation
+- ✅ **Step-by-step guides** - From zero to running cluster
+- ✅ **Architecture diagrams** - Understand what you're building
+- ✅ **Troubleshooting tips** - Common issues and solutions
+- ✅ **Customization examples** - Adapt to your environment
+
+## 🚀 Quick Start
+
+**Want to deploy fast?** Here's the TL;DR:
+
+```bash
+# 1. Fork and clone this repo
+git clone https://github.com/YOUR_USERNAME/homelab.git
+cd homelab
+
+# 2. Setup credentials
+cp packer/90001-pkr-ubuntu-noble-1/credentials.pkrvars.hcl.example \
+   packer/90001-pkr-ubuntu-noble-1/credentials.pkrvars.hcl
+cp terraform/credentials.tfvars.example terraform/credentials.tfvars
+# Edit both files with your Proxmox details
+
+# 3. Build the VM template
+cd packer/90001-pkr-ubuntu-noble-1
+packer init .
+packer build -var-file="credentials.pkrvars.hcl" .
+
+# 4. Deploy infrastructure
+cd ../../terraform
+terraform init
+terraform apply -var-file="credentials.tfvars"
+```
+
+**⚠️ First time?** Check the [detailed Getting Started guide](./GETTING-STARTED.md) for a complete walkthrough!
+
+## 🎯 What You Get
+
+After deploying this boilerplate, you'll have:
+
+```
+Proxmox VE (asgard)
+└── VM Template: Ubuntu 24.04 LTS
+    └── RKE2 Cluster (valaskjalf)
+        ├── 3x Master Nodes (Control Plane)
+        │   └── 2 vCPU, 4GB RAM, 50GB disk each
+        └── 3x Worker Nodes
+            └── 3 vCPU, 12GB RAM, 100GB disk each
+```
+
+**Total Resources:** 15 vCPUs, 48GB RAM, 450GB storage
 
 ## 🏗️ Architecture
 
-L'infrastructure est composée de :
+### Default Configuration
 
-### Nœud Proxmox
-- **Nom** : `asgard`
-- **Hyperviseur** : Proxmox VE
-- **Storage** : local-zfs
+This boilerplate deploys the following infrastructure (easily customizable):
 
-### Cluster RKE2
+**Proxmox Node:** `asgard` (change to match your node name)  
+**Network:** 10.10.10.0/24 (customize to your network)  
+**Storage:** local-zfs (adjust to your storage pool)
 
-#### Masters Nodes (Control Plane)
-| Nom | VMID | IP | vCPU | RAM | Disque |
-|-----|------|-----|------|-----|--------|
+### VM Specifications
+
+#### Master Nodes (Control Plane)
+| Name | VMID | IP | vCPU | RAM | Disk |
+|------|------|-----|------|-----|------|
 | valaskjalf-master-1 | 1001 | 10.10.10.101/24 | 2 | 4 GB | 50 GB |
 | valaskjalf-master-2 | 1002 | 10.10.10.102/24 | 2 | 4 GB | 50 GB |
 | valaskjalf-master-3 | 1003 | 10.10.10.103/24 | 2 | 4 GB | 50 GB |
 
 #### Worker Nodes
-| Nom | VMID | IP | vCPU | RAM | Disque |
-|-----|------|-----|------|-----|--------|
+| Name | VMID | IP | vCPU | RAM | Disk |
+|------|------|-----|------|-----|------|
 | valaskjalf-worker-1 | 1011 | 10.10.10.111/24 | 3 | 12 GB | 100 GB |
 | valaskjalf-worker-2 | 1012 | 10.10.10.112/24 | 3 | 12 GB | 100 GB |
 | valaskjalf-worker-3 | 1013 | 10.10.10.113/24 | 3 | 12 GB | 100 GB |
 
-**Réseau** : 10.10.10.0/24 avec passerelle 10.10.10.1
+**Network:** 10.10.10.0/24 with gateway 10.10.10.1
 
-## 📦 Prérequis
+> 💡 **Tip:** All names, IPs, and resources are customizable! See the [Getting Started guide](./GETTING-STARTED.md#step-2-customize-configuration) for details.
 
-### Logiciels requis
+## 📦 Prerequisites
 
-- [Proxmox VE](https://www.proxmox.com/) (installé sur le serveur)
-- [Terraform](https://www.terraform.io/downloads) >= 1.0
-- [Packer](https://www.packer.io/downloads) >= 1.9
-- ISO Ubuntu 24.04 LTS dans Proxmox (`local:iso/ubuntu-24.04.3-live-server-amd64.iso`)
+Before using this boilerplate, ensure you have:
 
-### Accès Proxmox
+### Infrastructure
+- ✅ A server running **Proxmox VE** (tested on 8.x)
+- ✅ At least 16GB RAM and 500GB storage available
+- ✅ Network access to Proxmox API
+- ✅ Ubuntu 24.04 LTS ISO uploaded to Proxmox
 
-- Accès API Proxmox avec credentials appropriés
-- Token API ou compte root pour l'authentification
-- Réseau configuré sur `vmbr0`
-- Storage pool `local-zfs` disponible
+### Local Tools
+- ✅ [Terraform](https://www.terraform.io/downloads) >= 1.0
+- ✅ [Packer](https://www.packer.io/downloads) >= 1.9
+- ✅ SSH key pair generated (`ssh-keygen -t rsa -b 4096`)
+- ✅ Git installed
 
-### Connaissances recommandées
+### Knowledge (Helpful but not required)
+- 🎓 Basic Terraform and Packer usage
+- 🎓 Proxmox basics (or willingness to learn!)
+- 🎓 SSH and Linux fundamentals
+- 🎓 Basic Kubernetes concepts
 
-- Infrastructure as Code (IaC)
-- Virtualisation avec Proxmox
-- Bases de Kubernetes/RKE2
-- Linux système (Ubuntu)
+> 📚 **New to these tools?** Don't worry! The documentation includes explanations and examples.
 
-## 📁 Structure du projet
+## 🚦 Getting Started
 
-```
-.
-├── README.md                    # Ce fichier
-├── docs/                        # Documentation détaillée
-│   ├── infrastructure.md        # Vue d'ensemble de l'infrastructure
-│   ├── packer.md               # Documentation Packer (templates VM)
-│   ├── terraform.md            # Documentation Terraform (déploiement)
-│   └── network.md              # Configuration réseau
-├── packer/                      # Templates Packer
-│   └── 90001-pkr-ubuntu-noble-1/
-│       ├── config.pkr.hcl      # Configuration variables
-│       ├── build.pkr.hcl       # Build specification
-│       ├── files/              # Fichiers à copier dans le template
-│       │   └── 99-pve.cfg      # Config cloud-init pour Proxmox
-│       └── http/               # Fichiers servis via HTTP pour autoinstall
-│           ├── user-data       # Configuration cloud-init
-│           └── meta-data       # Métadonnées cloud-init
-└── terraform/                   # Configuration Terraform
-    ├── provider.tf             # Configuration du provider Proxmox
-    ├── valaskjalf-master-*.tf  # Définitions des masters
-    └── valaskjalf-worker-*.tf  # Définitions des workers
-```
+### For First-Time Users
 
-## 🚀 Démarrage rapide
+**Never deployed infrastructure as code before?** Start here:
 
-### 1. Cloner le repository
+1. 📖 Read the [Getting Started Guide](./GETTING-STARTED.md) - Complete walkthrough
+2. 🔧 Follow [Step 2: Customize Configuration](./GETTING-STARTED.md#step-2-customize-configuration)
+3. 🔐 Setup credentials using the provided example files
+4. 🚀 Deploy step-by-step following the guide
 
-```bash
-git clone <repository-url>
-cd homelab
-```
+### For Experienced Users
 
-### 2. Créer le template Packer
+**Already familiar with Terraform/Packer?** Quick path:
 
-```bash
-cd packer/90001-pkr-ubuntu-noble-1
-
-# Créer un fichier credentials.pkrvars.hcl avec vos identifiants
-cat > credentials.pkrvars.hcl << EOF
-proxmox_api_url          = "https://your-proxmox:8006/api2/json"
-proxmox_api_token_id     = "your-token-id"
-proxmox_api_token_secret = "your-token-secret"
-ssh_username             = "odin"
-ssh_password             = "your-temp-password"
-public_key               = "ssh-rsa AAAA... your-public-key"
-EOF
-
-# Initialiser et construire le template
-packer init .
-packer build -var-file="credentials.pkrvars.hcl" .
-```
-
-### 3. Déployer l'infrastructure avec Terraform
-
-```bash
-cd terraform
-
-# Créer un fichier credentials.tfvars avec vos identifiants
-cat > credentials.tfvars << EOF
-PROXMOX_API_URL       = "https://your-proxmox:8006/api2/json"
-PROXMOX_ROOT_USER     = "root@pam"
-PROXMOX_ROOT_PASSWORD = "your-password"
-PUBLIC_SSH_KEY        = "ssh-rsa AAAA... your-public-key"
-CI_ODIN_PASSWORD      = "hashed-password"
-EOF
-
-# Initialiser et déployer
-terraform init
-terraform plan -var-file="credentials.tfvars"
-terraform apply -var-file="credentials.tfvars"
-```
+1. Fork this repository
+2. Copy example credentials and fill in your details:
+   ```bash
+   cp packer/90001-pkr-ubuntu-noble-1/credentials.pkrvars.hcl.example \
+      packer/90001-pkr-ubuntu-noble-1/credentials.pkrvars.hcl
+   
+   cp terraform/credentials.tfvars.example terraform/credentials.tfvars
+   ```
+3. Customize network/names in Terraform files if needed
+4. Build template: `packer build -var-file="credentials.pkrvars.hcl" .`
+5. Deploy: `terraform apply -var-file="credentials.tfvars"`
 
 ## ⚙️ Configuration
 
-### Variables Packer
+### Credential Files
 
-Créez un fichier `credentials.pkrvars.hcl` dans le dossier packer avec :
+This boilerplate includes example credential files that you copy and customize:
 
-| Variable | Description |
-|----------|-------------|
-| `proxmox_api_url` | URL de l'API Proxmox |
-| `proxmox_api_token_id` | ID du token API |
-| `proxmox_api_token_secret` | Secret du token API |
-| `ssh_username` | Nom d'utilisateur SSH (défaut: odin) |
-| `ssh_password` | Mot de passe temporaire pour le build |
-| `public_key` | Clé SSH publique à installer |
+**Packer credentials** (`packer/90001-pkr-ubuntu-noble-1/credentials.pkrvars.hcl`):
+- Proxmox API URL, token ID, and secret
+- SSH username and temporary password for build
+- Your SSH public key
 
-### Variables Terraform
+**Terraform credentials** (`terraform/credentials.tfvars`):
+- Proxmox API URL and credentials
+- Your SSH public key (same as Packer)
+- Hashed password for cloud-init user
 
-Créez un fichier `credentials.tfvars` dans le dossier terraform avec :
+📋 **See example files:**
+- [`packer/.../credentials.pkrvars.hcl.example`](packer/90001-pkr-ubuntu-noble-1/credentials.pkrvars.hcl.example)
+- [`terraform/credentials.tfvars.example`](terraform/credentials.tfvars.example)
 
-| Variable | Description |
-|----------|-------------|
-| `PROXMOX_API_URL` | URL de l'API Proxmox |
-| `PROXMOX_ROOT_USER` | Utilisateur Proxmox (ex: root@pam) |
-| `PROXMOX_ROOT_PASSWORD` | Mot de passe Proxmox |
-| `PUBLIC_SSH_KEY` | Clé SSH publique pour les VMs |
-| `CI_ODIN_PASSWORD` | Mot de passe hashé pour cloud-init |
+### Customization Points
 
-> ⚠️ **Important** : Ne commitez jamais vos fichiers credentials ! Ils sont déjà dans `.gitignore`.
+This boilerplate is designed to be easily customized:
 
-## 🔧 Utilisation
+| What to Customize | Where | Difficulty |
+|-------------------|-------|------------|
+| **Network IPs** | `terraform/*.tf` → `ipconfig0` | ⭐ Easy |
+| **VM Resources** | `terraform/*.tf` → `cpu`, `memory`, `disk` | ⭐ Easy |
+| **Node Names** | `terraform/*.tf` → `name`, `target_node` | ⭐⭐ Medium |
+| **Cluster Name** | Rename `terraform/valaskjalf-*.tf` files | ⭐⭐ Medium |
+| **SSH Port** | `packer/.../build.pkr.hcl` → provisioner | ⭐⭐ Medium |
+| **OS/Packages** | `packer/.../http/user-data` | ⭐⭐⭐ Advanced |
 
-### Construire un nouveau template
+📖 **Detailed customization guide:** [GETTING-STARTED.md#step-2-customize-configuration](./GETTING-STARTED.md#step-2-customize-configuration)
+
+## 🎨 Customization Examples
+
+### Change Network Range
+
+```hcl
+# In terraform/valaskjalf-master-1.tf (repeat for all files)
+ipconfig0  = "ip=192.168.1.101/24,gw=192.168.1.1"  # Changed from 10.10.10.x
+nameserver = "192.168.1.1"
+```
+
+### Increase Worker Resources
+
+```hcl
+# In terraform/valaskjalf-worker-1.tf
+cpu {
+  cores   = 6  # Increased from 3
+}
+memory = 24576  # 24GB instead of 12GB
+disks {
+  virtio {
+    virtio0 {
+      disk {
+        size = 200  # 200GB instead of 100GB
+      }
+    }
+  }
+}
+```
+
+### Add More Workers
+
+```bash
+# Copy an existing worker file
+cp terraform/valaskjalf-worker-3.tf terraform/valaskjalf-worker-4.tf
+
+# Edit the new file:
+# - Change resource name: valaskjalf_worker_4
+# - Change VM name: "valaskjalf-worker-4"
+# - Change VMID: 1014
+# - Change IP: 10.10.10.114
+
+# Apply
+terraform apply -var-file="credentials.tfvars"
+```
+
+## 📁 Project Structure
+
+```
+homelab/
+├── README.md                           # This file - Overview and quick start
+├── GETTING-STARTED.md                  # Detailed setup guide
+├── docs/                               # Comprehensive documentation
+│   ├── infrastructure.md               # Architecture deep-dive
+│   ├── packer.md                       # Packer template details
+│   ├── terraform.md                    # Terraform configuration guide
+│   └── network.md                      # Network configuration
+├── packer/                             # VM template creation
+│   └── 90001-pkr-ubuntu-noble-1/
+│       ├── credentials.pkrvars.hcl.example  # 👈 Copy and customize
+│       ├── config.pkr.hcl              # Variable definitions
+│       ├── build.pkr.hcl               # Build specification
+│       ├── files/
+│       │   └── 99-pve.cfg              # Cloud-init config
+│       └── http/
+│           ├── user-data               # Ubuntu autoinstall
+│           └── meta-data
+└── terraform/                          # Infrastructure deployment
+    ├── credentials.tfvars.example      # 👈 Copy and customize
+    ├── provider.tf                     # Proxmox provider config
+    ├── valaskjalf-master-1.tf          # Master node 1
+    ├── valaskjalf-master-2.tf          # Master node 2
+    ├── valaskjalf-master-3.tf          # Master node 3
+    ├── valaskjalf-worker-1.tf          # Worker node 1
+    ├── valaskjalf-worker-2.tf          # Worker node 2
+    └── valaskjalf-worker-3.tf          # Worker node 3
+```
+
+## 🔧 Usage
+
+### Build VM Template
 
 ```bash
 cd packer/90001-pkr-ubuntu-noble-1
+
+# Initialize Packer plugins
+packer init .
+
+# Validate configuration
+packer validate -var-file="credentials.pkrvars.hcl" .
+
+# Build template (~10-15 minutes)
 packer build -var-file="credentials.pkrvars.hcl" .
 ```
 
-### Gérer l'infrastructure
+### Deploy Infrastructure
 
 ```bash
 cd terraform
 
-# Voir les changements prévus
+# Initialize Terraform
+terraform init
+
+# Preview changes
 terraform plan -var-file="credentials.tfvars"
 
-# Appliquer les changements
+# Deploy all VMs
 terraform apply -var-file="credentials.tfvars"
 
-# Détruire l'infrastructure
+# Or deploy selectively (masters first, then workers)
+terraform apply -var-file="credentials.tfvars" \
+  -target=proxmox_vm_qemu.valaskjalf_master_1 \
+  -target=proxmox_vm_qemu.valaskjalf_master_2 \
+  -target=proxmox_vm_qemu.valaskjalf_master_3
+```
+
+### Connect to VMs
+
+VMs are configured with:
+- **SSH Port:** 2222 (not 22!)
+- **User:** odin (or your customized username)
+- **Auth:** SSH key only (no passwords)
+
+```bash
+# Direct connection
+ssh -p 2222 odin@10.10.10.101
+
+# Or configure ~/.ssh/config for easier access
+cat >> ~/.ssh/config << EOF
+Host homelab-*
+    Port 2222
+    User odin
+    IdentityFile ~/.ssh/id_rsa
+
+Host homelab-master-1
+    HostName 10.10.10.101
+EOF
+
+# Then simply:
+ssh homelab-master-1
+```
+
+### Destroy Infrastructure
+
+```bash
+cd terraform
 terraform destroy -var-file="credentials.tfvars"
 ```
 
-### Se connecter aux VMs
-
-Les VMs sont configurées avec :
-- **Port SSH** : 2222
-- **Utilisateur** : odin
-- **Authentification** : Clé SSH uniquement
-
-```bash
-# Exemple de connexion
-ssh -p 2222 odin@10.10.10.101
-```
+> ⚠️ **Warning:** This will permanently delete all VMs!
 
 ## 📚 Documentation
 
-Documentation détaillée disponible dans le dossier [`docs/`](./docs) :
+Comprehensive guides are available in the [`docs/`](./docs) directory:
 
-- **[Infrastructure](./docs/infrastructure.md)** - Vue d'ensemble et architecture
-- **[Packer](./docs/packer.md)** - Création de templates VM
-- **[Terraform](./docs/terraform.md)** - Déploiement d'infrastructure
-- **[Réseau](./docs/network.md)** - Configuration réseau
+| Document | Description |
+|----------|-------------|
+| [**Getting Started**](./GETTING-STARTED.md) | Complete setup walkthrough for beginners |
+| [**Infrastructure**](./docs/infrastructure.md) | Architecture deep-dive, components, HA setup |
+| [**Packer**](./docs/packer.md) | VM template creation, customization, troubleshooting |
+| [**Terraform**](./docs/terraform.md) | Infrastructure deployment, state management, workflows |
+| [**Network**](./docs/network.md) | IP planning, DNS, SSH config, firewall rules |
 
-## 📝 Licence
+## 🤝 Contributing
 
-Ce projet est un homelab personnel. Utilisez-le comme référence ou base pour votre propre infrastructure.
+This is a boilerplate/template project, but improvements are welcome!
+
+### Ways to Contribute
+
+- 🐛 **Report bugs** or issues you encounter
+- 💡 **Suggest improvements** for better usability
+- 📖 **Improve documentation** with clarifications or examples
+- ⭐ **Star the repo** if you find it useful!
+- 🔀 **Share your fork** and customizations with the community
+
+### Sharing Your Setup
+
+If you've customized this boilerplate for your homelab:
+
+1. Fork this repository
+2. Make your customizations
+3. Document your changes in your fork's README
+4. Share a link in the Discussions or Issues!
+
+Others can learn from your configuration choices.
+
+## 💭 Feedback & Support
+
+- 🐛 **Found a bug?** [Open an issue](../../issues)
+- 💡 **Have a suggestion?** [Start a discussion](../../discussions)
+- ❓ **Need help?** Check the [Getting Started guide](./GETTING-STARTED.md) or open an issue
+
+## 🌟 Inspiration
+
+This boilerplate was inspired by:
+- [christianlempa/boilerplates](https://github.com/christianlempa/boilerplates) - Template structure and approach
+- The homelab community's need for reproducible infrastructure
+- Infrastructure as Code best practices
+
+## 📄 License
+
+This is a personal homelab boilerplate. Feel free to fork, customize, and use for your own infrastructure!
+
+**MIT License** - See LICENSE file for details
 
 ---
 
 <div align="center">
-  Fait avec ❤️ pour l'apprentissage et l'automatisation
+
+**Ready to build your homelab?**
+
+[🚀 Get Started](./GETTING-STARTED.md) • [📖 Read the Docs](./docs) • [⭐ Star this Repo](../../stargazers)
+
+Made with ❤️ for the homelab community
+
 </div>
