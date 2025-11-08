@@ -1,0 +1,5 @@
+terraform/.terraform*
+terraform/terraform*
+terraform/credentials*
+
+packer/90001-pkr-ubuntu-noble-1/*credentials*
