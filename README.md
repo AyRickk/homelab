@@ -418,18 +418,6 @@ Others can learn from your configuration choices.
 - 💡 **Have a suggestion?** [Start a discussion](../../discussions)
 - ❓ **Need help?** Check the [Getting Started guide](./GETTING-STARTED.md) or open an issue
 
-## 🌟 Inspiration
-
-This boilerplate was inspired by:
-- [christianlempa/boilerplates](https://github.com/christianlempa/boilerplates) - Template structure and approach
-- The homelab community's need for reproducible infrastructure
-- Infrastructure as Code best practices
-
-## 📄 License
-
-This is a personal homelab boilerplate. Feel free to fork, customize, and use for your own infrastructure!
-
-**MIT License** - See LICENSE file for details
 
 ---
 
