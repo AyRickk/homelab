@@ -13,8 +13,7 @@ all:
     ansible_ssh_private_key_file: ~/.ssh/ansible_rke2
 
     # YubiKey Users: See docs/rke2-installation.md for YubiKey + Ansible options
-    # Option 1: Use ssh-agent with YubiKey (run: eval $(ssh-agent) && ssh-add -s <pkcs11-lib>)
-    # Option 2: Create dedicated Ansible key (recommended for automation)
+    # Create dedicated Ansible key (recommended for automation)
     #   Generate: ssh-keygen -t ed25519 -f ~/.ssh/ansible_rke2
     #   Then set: ansible_ssh_private_key_file: ~/.ssh/ansible_rke2
 
@@ -32,7 +31,7 @@ all:
       hosts:
         valaskjalf-master-1:
           ansible_host: 10.10.10.101
-          rke2_type: server # ✅ IMPORTANT: Définir le type
+          rke2_type: server
         valaskjalf-master-2:
           ansible_host: 10.10.10.102
           rke2_type: server
@@ -49,7 +48,7 @@ all:
       hosts:
         valaskjalf-worker-1:
           ansible_host: 10.10.10.111
-          rke2_type: agent # ✅ IMPORTANT: Définir le type
+          rke2_type: agent
         valaskjalf-worker-2:
           ansible_host: 10.10.10.112
           rke2_type: agent
