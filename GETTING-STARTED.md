@@ -232,16 +232,16 @@ ykman list
 # Set up PIV (if not already configured)
 ykman piv info
 
-# Generate SSH key on YubiKey (slot 9a for authentication)
-ykman piv keys generate 9a /tmp/public-key.pem
-ykman piv certificates generate -s "SSH Key" 9a /tmp/public-key.pem
+# Generate SSH key on YubiKey (slot 9d)
+ykman piv keys generate --algorithm ECCP384 --format PEM --pin-policy always --touch-policy always 9d public.pem
+ykman piv certificates generate --subject "CN=SSH Key" 9d public.pem
 ```
 
 #### 3. Extract SSH Public Key
 
 ```bash
 # Extract the public key in SSH format
-ssh-keygen -D /usr/local/lib/libykcs11.dylib -e > ~/.ssh/yubikey_pub.key
+ssh-keygen -D /opt/homebrew/lib/libykcs11.dylib -e > ~/.ssh/yubikey_pub.key
 
 # Or on Linux:
 ssh-keygen -D /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so -e > ~/.ssh/yubikey_pub.key
@@ -259,7 +259,7 @@ Add to your `~/.ssh/config`:
 Host homelab-*
     Port 2222
     User odin
-    PKCS11Provider /usr/local/lib/libykcs11.dylib  # macOS
+    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib  # macOS
     # PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so  # Linux
 
 Host homelab-master-1
@@ -381,7 +381,7 @@ Host homelab-master-1
     HostName 10.10.10.101
     Port 2222
     User odin
-    PKCS11Provider /usr/local/lib/libykcs11.dylib  # macOS path
+    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib  # macOS path
     # PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so  # Linux path
 EOF
 
