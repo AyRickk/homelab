@@ -414,13 +414,13 @@ Comprehensive guides are available in the [`docs/`](./docs) directory:
 | [**Infrastructure**](./docs/infrastructure.md) | Architecture deep-dive, components, HA setup, hardware specs |
 | [**Packer**](./docs/packer.md) | VM template creation, customization, troubleshooting |
 | [**Terraform**](./docs/terraform.md) | Infrastructure deployment, state management, workflows |
+| [**GPU Passthrough**](./docs/gpu-passthrough.md) | NVIDIA RTX 2080 PCIe passthrough configuration |
 | [**Documentation Roadmap**](./docs/ROADMAP.md) | Planned documentation and future topics |
 
 ### Future Documentation Topics
 
 As this homelab evolves, the following guides will be added:
 
-- 🔜 **GPU Passthrough** - Configure NVIDIA RTX 2080 passthrough to VMs
 - 🔜 **RKE2 Deployment** - Step-by-step Kubernetes cluster setup
 - 🔜 **Monitoring Stack** - Prometheus, Grafana, and alerting
 - 🔜 **Storage Solutions** - Longhorn, NFS, and persistent volumes

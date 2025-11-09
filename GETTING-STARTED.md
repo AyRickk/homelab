@@ -457,19 +457,19 @@ Now that the base infrastructure is running, planned additions include:
 - 🔄 **GitOps** with ArgoCD or Flux
 - 🌐 **Ingress Controller** with Traefik or Nginx Ingress
 - 📦 **Application deployments** to the RKE2 cluster
-- 🎮 **GPU Passthrough** for NVIDIA RTX 2080 to specific VMs
+- ✅ **GPU Passthrough** for NVIDIA RTX 2080 to specific VMs - [Documentation Complete](docs/gpu-passthrough.md)
 - 🔐 **Certificate Management** with cert-manager
 - 📁 **Storage Solutions** with Longhorn or NFS
 - 🌊 **Service Mesh** with Istio or Linkerd (optional)
 
-### Documentation Planned
+### Documentation Status
 
-- **GPU Passthrough Guide** - Detailed instructions for passing through the RTX 2080 to VMs
-- **RKE2 Cluster Setup** - Complete guide for installing and configuring RKE2
-- **Homelab Services** - Documentation for various self-hosted services
-- **Backup Strategies** - Automated backup and disaster recovery procedures
-- **Network Architecture** - Advanced networking, VLANs, and firewall configurations
-- **Performance Tuning** - Optimize performance on the i9-9900K platform
+- ✅ **GPU Passthrough Guide** - Complete configuration guide for RTX 2080 passthrough
+- 🔜 **RKE2 Cluster Setup** - Complete guide for installing and configuring RKE2
+- 🔜 **Homelab Services** - Documentation for various self-hosted services
+- 🔜 **Backup Strategies** - Automated backup and disaster recovery procedures
+- 🔜 **Network Architecture** - Advanced networking, VLANs, and firewall configurations
+- 🔜 **Performance Tuning** - Optimize performance on the i9-9900K platform
 
 ## Next Steps
 

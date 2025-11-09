@@ -11,22 +11,11 @@ This document tracks planned documentation additions and improvements as the hom
 - Getting started guide
 - YubiKey SSH authentication setup
 - Contributing guidelines
+- **GPU Passthrough configuration** (NVIDIA RTX 2080)
 
 ## Planned Documentation
 
 ### High Priority
-
-#### 🎮 GPU Passthrough Guide
-**Status**: Placeholder created  
-**Topics to cover**:
-- BIOS configuration for VT-d/IOMMU
-- Proxmox host setup (GRUB, VFIO, driver blacklisting)
-- VM configuration for PCIe passthrough
-- Windows and Linux guest setup
-- Performance tuning and optimization
-- Use cases: AI/ML, gaming, transcoding
-
-**Target Hardware**: NVIDIA RTX 2080
 
 #### ⚙️ RKE2 Cluster Setup
 **Status**: Planned  
