@@ -31,9 +31,9 @@
     # CRITICAL: Enable HA mode
     rke2_ha_mode: true
 
-    # CRITICAL: Disable Keepalived and enable KubeVIP
-    rke2_ha_mode_keepalived: false # ✅ Must be false when using KubeVIP
-    rke2_ha_mode_kubevip: true # ✅ Enable KubeVIP
+    # Disable Keepalived and enable KubeVIP
+    rke2_ha_mode_keepalived: false # Must be false when using KubeVIP
+    rke2_ha_mode_kubevip: true # Enable KubeVIP
 
     # Virtual IP address for the cluster API (must be FREE on your network)
     # This IP will "float" between your 3 masters
@@ -45,19 +45,19 @@
     # Optional: Subnet mask for the VIP
     # rke2_api_cidr: 24
 
-    # ✅ NEW: KubeVIP as Cloud Provider for LoadBalancer services
+    # KubeVIP as Cloud Provider for LoadBalancer services
     rke2_kubevip_cloud_provider_enable: true
     rke2_kubevip_svc_enable: true
 
-    # ✅ NEW: IP range for LoadBalancer services (optional but recommended)
+    # IP range for LoadBalancer services (optional but recommended)
     # KubeVIP will assign IPs from this range to LoadBalancer services
     rke2_loadbalancer_ip_range:
       range-global: 192.168.1.50-192.168.1.100
 
-    # ✅ UPDATED: Latest KubeVIP image (as of January 2025)
+    # KubeVIP image
     rke2_kubevip_image: ghcr.io/kube-vip/kube-vip:v1.0.1
 
-    # ✅ NEW: Download kubeconfig to local machine
+    # Download kubeconfig to local machine
     rke2_download_kubeconf: true
     rke2_download_kubeconf_path: /tmp
     rke2_download_kubeconf_file_name: rke2-valaskjalf.yaml
@@ -77,16 +77,16 @@
         - rke2-ingress-nginx
 
       # --- TLS Configuration ---
-      # ✅ IMPORTANT: Add the VIP to SANs
+      # Add the VIP to SANs
       tls-san:
-        - 10.10.10.100 # ⚠️ VIP - MUST match rke2_api_ip
+        - 10.10.10.100 # MUST match rke2_api_ip
         - 10.10.10.101 # Master 1
         - 10.10.10.102 # Master 2
         - 10.10.10.103 # Master 3
         - yggdrasil.dev # Optional domain
 
       # --- etcd Configuration ---
-      etcd-expose-metrics: true # ✅ CHANGED: Enable for monitoring
+      etcd-expose-metrics: true # Enable for monitoring
 
       # --- Security Configuration ---
       secrets-encryption: true
@@ -101,7 +101,7 @@
       # --- Kubeconfig Configuration ---
       write-kubeconfig-mode: "0644"
 
-      # ✅ NEW: Taint masters (best practice for production)
+      # Taint masters (best practice for production)
       node-taint:
         - "node-role.kubernetes.io/control-plane=true:NoSchedule"
 
@@ -109,14 +109,14 @@
     # RKE2 Agent (Worker) Configuration
     # ===========================================
     rke2_agent_config:
-      # ✅ IMPORTANT: Workers connect to VIP, not specific master
+      # Workers connect to VIP, not specific master
       server: "https://10.10.10.100:9345" # ⚠️ MUST match rke2_api_ip
 
       # Add labels to worker nodes
       node-label:
         - "node-type=worker"
 
-    # ✅ NEW: Specific config for GPU worker (worker-3)
+    # Specific config for GPU worker (worker-3)
     # This will be applied when inventory_hostname matches worker-3
     # You can add this in inventory.yml as host_vars instead
 
@@ -138,9 +138,9 @@
     - name: Wait for RKE2 server to be ready
       wait_for:
         port: 6443
-        host: 10.10.10.100 # ✅ CHANGED: Wait for VIP, not localhost
+        host: 10.10.10.100 # Wait for VIP, not localhost
         delay: 10
-        timeout: 600 # ✅ INCREASED: KubeVIP takes longer to start
+        timeout: 600
       when: inventory_hostname in groups['masters']
 
     - name: Create .kube directory for odin user
@@ -166,7 +166,7 @@
       replace:
         path: /home/odin/.kube/config
         regexp: "https://127.0.0.1:6443"
-        replace: "https://10.10.10.100:6443" # ✅ CHANGED: Use VIP, not master1
+        replace: "https://10.10.10.100:6443" # Use VIP
       when: inventory_hostname == groups['masters'][0]
 
     - name: Create kubectl symlink
@@ -183,7 +183,6 @@
   hosts: masters[0]
   become: yes
   vars:
-    # ✅ UPDATED: Latest stable versions (January 2025)
     cilium_version: "1.18.3"
     cilium_cli_version: "v0.18.8"
 
@@ -191,8 +190,8 @@
     - name: Wait for RKE2 to be fully ready
       wait_for:
         port: 6443
-        host: 10.10.10.100 # ✅ Wait for VIP
-        delay: 60 # ✅ INCREASED: KubeVIP needs time
+        host: 10.10.10.100 # Wait for VIP
+        delay: 60
         timeout: 600
 
     - name: Download Cilium CLI
@@ -245,7 +244,7 @@
       register: cilium_install
 
     - name: Wait for Cilium to be ready
-      command: cilium status --wait --wait-duration=10m # ✅ INCREASED timeout
+      command: cilium status --wait --wait-duration=10m
       environment:
         KUBECONFIG: /etc/rancher/rke2/rke2.yaml
       register: cilium_status
