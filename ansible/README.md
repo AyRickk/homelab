@@ -34,6 +34,8 @@ ansible-galaxy install -r requirements.yml
 ansible all -i inventory.yml -m ping
 ```
 
+**Note for YubiKey Users:** If you use YubiKey for SSH authentication, see the [YubiKey and Ansible Compatibility](../docs/rke2-installation.md#yubikey-and-ansible-compatibility) section in the full documentation for two approaches to handle PIN/touch requirements during Ansible automation.
+
 ### 4. Deploy RKE2
 
 ```bash

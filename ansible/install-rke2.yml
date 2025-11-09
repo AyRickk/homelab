@@ -5,7 +5,12 @@
 #
 # Usage: ansible-playbook -i inventory.yml install-rke2.yml
 #
-# Documentation: https://github.com/AyRickk/homelab/blob/main/docs/rke2-installation.md
+# Based on lablabs/ansible-role-rke2:
+#   - Role Documentation: https://galaxy.ansible.com/ui/standalone/roles/lablabs/rke2/documentation/
+#   - Installation Guide: https://galaxy.ansible.com/ui/standalone/roles/lablabs/rke2/install/
+#   - GitHub Repository: https://github.com/lablabs/ansible-role-rke2
+#
+# Tutorial: https://github.com/AyRickk/homelab/blob/main/docs/rke2-installation.md
 
 - name: Install RKE2 with Cilium CNI
   hosts: rke2_cluster

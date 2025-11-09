@@ -100,6 +100,85 @@ ssh -p 2222 odin@10.10.10.113 "echo 'Worker 3 OK'"
 
 > 💡 **Tip:** Configure `~/.ssh/config` for easier access (see [README](../README.md#connect-to-vms))
 
+### YubiKey and Ansible Compatibility
+
+**Important Note for YubiKey Users:**
+
+If you're using a YubiKey for SSH authentication (which requires PIN entry and physical touch), you have **two options** for running Ansible:
+
+#### Option 1: SSH Agent with YubiKey (Recommended)
+
+Use `ssh-agent` to cache your YubiKey authentication for the duration of the Ansible playbook:
+
+```bash
+# Start ssh-agent and add your YubiKey
+eval $(ssh-agent)
+ssh-add -s /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so  # Linux
+# OR on macOS:
+# ssh-add -s /opt/homebrew/lib/libykcs11.dylib
+
+# Enter PIN and touch YubiKey when prompted
+
+# Verify the key is added
+ssh-add -l
+
+# Now run Ansible (will use the cached authentication)
+ansible-playbook -i inventory.yml install-rke2.yml
+```
+
+**Pros:**
+- ✅ Maintains YubiKey security
+- ✅ No need for separate credentials
+- ✅ Works with existing setup
+
+**Cons:**
+- ⚠️ Requires manual PIN/touch once per session
+- ⚠️ Agent timeout may require re-authentication for long playbooks
+
+#### Option 2: Create a Dedicated Ansible SSH Key (Alternative)
+
+Generate a standard SSH key pair specifically for Ansible automation:
+
+```bash
+# Generate a dedicated SSH key for Ansible (no YubiKey)
+ssh-keygen -t ed25519 -f ~/.ssh/ansible_rke2 -C "ansible-automation"
+
+# Copy the public key to all nodes
+for ip in 10.10.10.{101..103} 10.10.10.{111..113}; do
+  ssh-copy-id -i ~/.ssh/ansible_rke2.pub -p 2222 odin@$ip
+done
+
+# Update inventory.yml to use this key
+# ansible_ssh_private_key_file: ~/.ssh/ansible_rke2
+```
+
+Then update `ansible/inventory.yml`:
+
+```yaml
+all:
+  vars:
+    ansible_user: odin
+    ansible_port: 2222
+    ansible_ssh_private_key_file: ~/.ssh/ansible_rke2  # Use dedicated key
+```
+
+**Pros:**
+- ✅ Fully automated (no manual intervention)
+- ✅ No timeout issues
+- ✅ Best for repeated deployments
+
+**Cons:**
+- ⚠️ Less secure than YubiKey (standard SSH key)
+- ⚠️ Requires managing an additional key
+
+#### Recommendation
+
+For **initial deployment**: Use **Option 2** (dedicated Ansible key) for smooth automation.
+
+For **production/security-critical**: Use **Option 1** (YubiKey with ssh-agent) and accept manual authentication.
+
+You can also use **both**: Keep YubiKey for manual SSH access and use a dedicated key only for Ansible automation.
+
 ## Architecture
 
 After installation, you'll have:
@@ -743,6 +822,8 @@ If you're still stuck:
    - [RKE2 Docs](https://docs.rke2.io/)
    - [Cilium Docs](https://docs.cilium.io/)
    - [ansible-role-rke2 GitHub](https://github.com/lablabs/ansible-role-rke2)
+   - [ansible-role-rke2 Galaxy Documentation](https://galaxy.ansible.com/ui/standalone/roles/lablabs/rke2/documentation/)
+   - [ansible-role-rke2 Installation Guide](https://galaxy.ansible.com/ui/standalone/roles/lablabs/rke2/install/)
 
 2. **Community support**:
    - [Rancher Users Slack](https://slack.rancher.io/)
@@ -822,9 +903,12 @@ velero install --provider aws --bucket k8s-backups --backup-location-config regi
   - [Network Policies](https://docs.cilium.io/en/stable/policy/)
   - [Hubble Observability](https://docs.cilium.io/en/stable/gettingstarted/hubble/)
 
-- **ansible-role-rke2**: https://github.com/lablabs/ansible-role-rke2
-  - [Role Documentation](https://github.com/lablabs/ansible-role-rke2/blob/main/README.md)
-  - [Examples](https://github.com/lablabs/ansible-role-rke2/tree/main/examples)
+- **ansible-role-rke2**: 
+  - [GitHub Repository](https://github.com/lablabs/ansible-role-rke2)
+  - [Ansible Galaxy Documentation](https://galaxy.ansible.com/ui/standalone/roles/lablabs/rke2/documentation/)
+  - [Ansible Galaxy Install Guide](https://galaxy.ansible.com/ui/standalone/roles/lablabs/rke2/install/)
+  - [Role README](https://github.com/lablabs/ansible-role-rke2/blob/main/README.md)
+  - [Configuration Examples](https://github.com/lablabs/ansible-role-rke2/tree/main/examples)
 
 ### Learning Resources
 
