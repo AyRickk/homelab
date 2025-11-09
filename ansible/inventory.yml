@@ -1,0 +1,48 @@
+---
+# Ansible Inventory for RKE2 Cluster
+# This inventory defines the structure of your Kubernetes cluster
+
+all:
+  vars:
+    # Common variables for all nodes
+    ansible_user: odin
+    ansible_port: 2222
+    ansible_ssh_private_key_file: ~/.ssh/id_rsa
+    # Disable host key checking for homelab (remove in production)
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+  children:
+    # RKE2 Server nodes (Control Plane / Masters)
+    # These nodes run the Kubernetes control plane components:
+    # - etcd (distributed key-value store)
+    # - kube-apiserver (API endpoint)
+    # - kube-scheduler (pod scheduling)
+    # - kube-controller-manager (cluster operations)
+    rke2_servers:
+      hosts:
+        valaskjalf-master-1:
+          ansible_host: 10.10.10.101
+        valaskjalf-master-2:
+          ansible_host: 10.10.10.102
+        valaskjalf-master-3:
+          ansible_host: 10.10.10.103
+
+    # RKE2 Agent nodes (Workers)
+    # These nodes run application workloads:
+    # - kubelet (node agent)
+    # - kube-proxy (network proxy)
+    # - Container runtime (containerd)
+    rke2_agents:
+      hosts:
+        valaskjalf-worker-1:
+          ansible_host: 10.10.10.111
+        valaskjalf-worker-2:
+          ansible_host: 10.10.10.112
+        valaskjalf-worker-3:
+          ansible_host: 10.10.10.113
+
+    # Group all RKE2 nodes together
+    rke2_cluster:
+      children:
+        rke2_servers:
+        rke2_agents:

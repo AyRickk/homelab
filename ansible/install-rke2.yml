@@ -1,0 +1,233 @@
+---
+# RKE2 Installation Playbook with Cilium CNI
+# This playbook installs and configures a production-ready RKE2 cluster
+# with Cilium as the Container Network Interface (CNI)
+#
+# Usage: ansible-playbook -i inventory.yml install-rke2.yml
+#
+# Documentation: https://github.com/AyRickk/homelab/blob/main/docs/rke2-installation.md
+
+- name: Install RKE2 with Cilium CNI
+  hosts: rke2_cluster
+  become: yes
+  vars:
+    # ===========================================
+    # RKE2 Version Configuration
+    # ===========================================
+    # Specify the RKE2 version to install
+    # Find versions at: https://github.com/rancher/rke2/releases
+    rke2_version: v1.28.5+rke2r1
+    
+    # ===========================================
+    # CNI Configuration
+    # ===========================================
+    # Use Cilium instead of the default Canal CNI
+    rke2_cni: cilium
+    
+    # ===========================================
+    # RKE2 Server (Control Plane) Configuration
+    # ===========================================
+    rke2_server_config:
+      # --- Network Configuration ---
+      # Pod network CIDR - Range of IPs for pods
+      cluster-cidr: "10.42.0.0/16"
+      
+      # Service network CIDR - Range of IPs for services
+      service-cidr: "10.43.0.0/16"
+      
+      # CoreDNS service IP (must be within service-cidr)
+      cluster-dns: "10.43.0.10"
+      
+      # --- Disabled Components ---
+      # Disable built-in CNI and ingress (we'll install Cilium and custom ingress)
+      disable:
+        - rke2-canal          # Default CNI (replaced by Cilium)
+        - rke2-ingress-nginx  # Built-in ingress (install custom later)
+      
+      # --- TLS Configuration ---
+      # Additional Subject Alternative Names for API server certificate
+      # Include all master node IPs and any custom domains
+      tls-san:
+        - 10.10.10.101        # Master 1 IP
+        - 10.10.10.102        # Master 2 IP  
+        - 10.10.10.103        # Master 3 IP
+        - valaskjalf.local    # Optional: cluster domain name
+      
+      # --- etcd Configuration ---
+      # Expose etcd metrics (set to true for monitoring)
+      etcd-expose-metrics: false
+      
+      # --- Security Configuration ---
+      # Enable secrets encryption at rest
+      secrets-encryption: true
+      
+      # --- Kube API Server Arguments ---
+      # Additional arguments for kube-apiserver
+      kube-apiserver-arg:
+        - "anonymous-auth=false"           # Disable anonymous authentication
+        - "audit-log-maxage=30"            # Keep audit logs for 30 days
+        - "audit-log-maxbackup=10"         # Keep max 10 audit log files
+        - "audit-log-maxsize=100"          # Max 100MB per audit log file
+      
+      # --- Kubeconfig Configuration ---
+      # Make kubeconfig readable by all users (for easy access)
+      write-kubeconfig-mode: "0644"
+    
+    # ===========================================
+    # RKE2 Agent (Worker) Configuration
+    # ===========================================
+    rke2_agent_config:
+      # Add labels to worker nodes
+      node-label:
+        - "node-type=worker"
+      
+    # ===========================================
+    # RKE2 Installation Configuration
+    # ===========================================
+    # Directory for RKE2 binary download
+    rke2_download_dir: /usr/local/bin
+    
+    # Enable RKE2 service on boot
+    rke2_start_on_boot: true
+    
+  roles:
+    # Install RKE2 using lablabs.rke2 role
+    - role: lablabs.rke2
+
+  tasks:
+    # ===========================================
+    # Post-Installation Tasks
+    # ===========================================
+    
+    - name: Wait for RKE2 server to be ready
+      wait_for:
+        port: 6443
+        delay: 10
+        timeout: 300
+      when: inventory_hostname in groups['rke2_servers']
+      
+    - name: Create .kube directory for odin user
+      file:
+        path: /home/odin/.kube
+        state: directory
+        owner: odin
+        group: odin
+        mode: '0755'
+      when: inventory_hostname == groups['rke2_servers'][0]
+      
+    - name: Copy kubeconfig to odin user
+      copy:
+        src: /etc/rancher/rke2/rke2.yaml
+        dest: /home/odin/.kube/config
+        owner: odin
+        group: odin
+        mode: '0600'
+        remote_src: yes
+      when: inventory_hostname == groups['rke2_servers'][0]
+      
+    - name: Replace localhost with first master IP in kubeconfig
+      replace:
+        path: /home/odin/.kube/config
+        regexp: 'https://127.0.0.1:6443'
+        replace: 'https://10.10.10.101:6443'
+      when: inventory_hostname == groups['rke2_servers'][0]
+
+# ===========================================
+# Cilium CNI Installation
+# ===========================================
+- name: Install Cilium CNI
+  hosts: rke2_servers[0]  # Run only on first master
+  become: yes
+  vars:
+    cilium_version: "1.14.5"
+    cilium_cli_version: "v0.15.18"
+    
+  tasks:
+    - name: Wait for RKE2 to be fully ready
+      wait_for:
+        port: 6443
+        delay: 30
+        timeout: 300
+        
+    - name: Download Cilium CLI
+      get_url:
+        url: "https://github.com/cilium/cilium-cli/releases/download/{{ cilium_cli_version }}/cilium-linux-amd64.tar.gz"
+        dest: /tmp/cilium-cli.tar.gz
+        mode: '0644'
+        timeout: 300
+    
+    - name: Extract Cilium CLI
+      unarchive:
+        src: /tmp/cilium-cli.tar.gz
+        dest: /usr/local/bin
+        remote_src: yes
+        creates: /usr/local/bin/cilium
+        
+    - name: Make Cilium CLI executable
+      file:
+        path: /usr/local/bin/cilium
+        mode: '0755'
+    
+    - name: Check if Cilium is already installed
+      command: cilium status --wait=false
+      environment:
+        KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+      register: cilium_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Cilium with recommended settings
+      command: >
+        cilium install
+        --version {{ cilium_version }}
+        --set kubeProxyReplacement=strict
+        --set k8sServiceHost=10.10.10.101
+        --set k8sServicePort=6443
+        --set operator.replicas=3
+        --set ipam.mode=kubernetes
+        --set tunnel=vxlan
+        --set hubble.enabled=true
+        --set hubble.relay.enabled=true
+        --set hubble.ui.enabled=true
+        --set prometheus.enabled=true
+        --set operator.prometheus.enabled=true
+      environment:
+        KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+      when: cilium_check.rc != 0
+      register: cilium_install
+      
+    - name: Wait for Cilium to be ready
+      command: cilium status --wait --wait-duration=5m
+      environment:
+        KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+      register: cilium_status
+      retries: 3
+      delay: 10
+      until: cilium_status.rc == 0
+      
+    - name: Display Cilium installation status
+      debug:
+        msg: "Cilium installation completed successfully!"
+      when: cilium_status.rc == 0
+      
+    - name: Display cluster information
+      debug:
+        msg:
+          - "=============================================="
+          - "RKE2 Cluster with Cilium CNI is ready!"
+          - "=============================================="
+          - "Access your cluster with:"
+          - "  ssh -p 2222 odin@10.10.10.101"
+          - "  export KUBECONFIG=/etc/rancher/rke2/rke2.yaml"
+          - "  kubectl get nodes"
+          - ""
+          - "Or copy kubeconfig to your local machine:"
+          - "  scp -P 2222 odin@10.10.10.101:/home/odin/.kube/config ~/.kube/config-homelab"
+          - ""
+          - "View Cilium status:"
+          - "  cilium status"
+          - "  cilium connectivity test"
+          - ""
+          - "Access Hubble UI:"
+          - "  cilium hubble ui"
+          - "=============================================="
