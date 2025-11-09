@@ -1,11 +1,11 @@
 #cloud-config
 autoinstall:
   version: 1
-  locale: fr_FR
+  locale: en_US.UTF-8
   refresh-installer:
     update: false
   keyboard:
-    layout: fr
+    layout: us
   ssh:
     install-server: true
     allow-pw: false
@@ -19,7 +19,7 @@ autoinstall:
       size: 0
   user-data:
     package_upgrade: true
-    timezone: Europe/Paris
+    timezone: UTC
     ssh_pwauth: true
     users:
       - name: odin

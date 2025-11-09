@@ -220,12 +220,14 @@ autoinstall:
 
 ### Important Parameters
 
-- **Locale**: en_US.UTF-8 (English)
-- **Keyboard**: us (QWERTY)
-- **Timezone**: UTC (configurable via cloud-init later)
+- **Locale**: en_US.UTF-8 (English) - customize in user-data if needed
+- **Keyboard**: us (QWERTY) - change to your preferred layout (uk, de, fr, etc.)
+- **Timezone**: UTC (configurable via cloud-init later) - can be changed to your timezone
 - **Swap**: 0 (disabled, recommended for Kubernetes)
 - **User**: odin with passwordless sudo
 - **Packages**: qemu-guest-agent + basic tools
+
+> 💡 **Customization Tip**: While the default locale is English (en_US.UTF-8) and keyboard is US, you can easily change these in the `http/user-data` file to match your preferences (e.g., `locale: fr_FR`, `layout: fr` for French).
 
 ## Usage
 

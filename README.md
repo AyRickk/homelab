@@ -414,19 +414,22 @@ Comprehensive guides are available in the [`docs/`](./docs) directory:
 | [**Infrastructure**](./docs/infrastructure.md) | Architecture deep-dive, components, HA setup, hardware specs |
 | [**Packer**](./docs/packer.md) | VM template creation, customization, troubleshooting |
 | [**Terraform**](./docs/terraform.md) | Infrastructure deployment, state management, workflows |
+| [**Documentation Roadmap**](./docs/ROADMAP.md) | Planned documentation and future topics |
 
 ### Future Documentation Topics
 
 As this homelab evolves, the following guides will be added:
 
 - 🔜 **GPU Passthrough** - Configure NVIDIA RTX 2080 passthrough to VMs
-- 🔜 **YubiKey Setup** - Detailed hardware security key configuration
 - 🔜 **RKE2 Deployment** - Step-by-step Kubernetes cluster setup
 - 🔜 **Monitoring Stack** - Prometheus, Grafana, and alerting
 - 🔜 **Storage Solutions** - Longhorn, NFS, and persistent volumes
-- 🔜 **Network Configuration** - Advanced networking, VLANs, and firewall rules
-- 🔜 **Backup & Recovery** - Automated backup strategies and disaster recovery
-- 🔜 **Service Deployments** - Common homelab services and applications
+- 🔜 **GitOps with ArgoCD** - Automated deployments
+- 🔜 **Ingress Controller** - Traefik or Nginx with TLS
+- 🔜 **Backup & Recovery** - Automated backup strategies
+- 🔜 **Homelab Services** - Common self-hosted applications
+
+See the [Documentation Roadmap](./docs/ROADMAP.md) for the complete list and status.
 
 ## 🤝 Contributing
 
@@ -440,6 +443,8 @@ This is a boilerplate/template project, but improvements are welcome!
 - ⭐ **Star the repo** if you find it useful!
 - 🔀 **Share your fork** and customizations with the community
 
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+
 ### Sharing Your Setup
 
 If you've customized this boilerplate for your homelab:
@@ -450,6 +455,26 @@ If you've customized this boilerplate for your homelab:
 4. Share a link in the Discussions or Issues!
 
 Others can learn from your configuration choices.
+
+## 🎓 Project Inspiration
+
+This project was inspired by excellent community projects like:
+
+- [ChristianLempa/boilerplates](https://github.com/ChristianLempa/boilerplates) - Great collection of boilerplates for homelab
+- Various homelab enthusiasts sharing their Infrastructure as Code setups
+
+The goal is to provide not just working code, but comprehensive documentation that explains the "why" and "how" behind every decision, making it useful both as a template and as a learning resource.
+
+## 📝 About This Project
+
+This homelab project serves multiple purposes:
+
+- **Personal Documentation** - A comprehensive record of my homelab setup and evolution
+- **Boilerplate Template** - Ready-to-use infrastructure code for others
+- **Learning Resource** - Detailed explanations for those new to homelabbing
+- **Living Documentation** - Updated as the homelab grows with new services and capabilities
+
+Whether you're here to fork the boilerplate, learn about homelab setups, or just exploring, welcome! The documentation is written to be helpful whether you're returning to this project after years or discovering it for the first time.
 
 ## 💭 Feedback & Support
 
