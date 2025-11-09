@@ -79,7 +79,7 @@ sudo apt install -y ansible
 pip3 install ansible
 
 # Verify installation
-ansible --version  # Should be 2.12 or newer
+ansible --version
 ```
 
 ### SSH Access
@@ -126,38 +126,38 @@ Host homelab-master-1
     HostName 10.10.10.101
     Port 2222
     User odin
+    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib        # macOS
     PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so  # Linux
-    # PKCS11Provider /opt/homebrew/lib/libykcs11.dylib        # macOS
 
 Host homelab-master-2
     HostName 10.10.10.102
     Port 2222
     User odin
-    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib
 
 Host homelab-master-3
     HostName 10.10.10.103
     Port 2222
     User odin
-    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib
 
 Host homelab-worker-1
     HostName 10.10.10.111
     Port 2222
     User odin
-    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib
 
 Host homelab-worker-2
     HostName 10.10.10.112
     Port 2222
     User odin
-    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib
 
 Host homelab-worker-3
     HostName 10.10.10.113
     Port 2222
     User odin
-    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib
 EOF
 
 # Copy the Ansible SSH key to all nodes using YubiKey authentication
@@ -256,7 +256,7 @@ High Availability Features
 
 ```bash
 # Navigate to your homelab repository
-cd /home/runner/work/homelab/homelab
+cd /path/to/repository/homelab
 
 # Create Ansible directory structure
 mkdir -p ansible
@@ -273,7 +273,7 @@ cat > requirements.yml << 'EOF'
 roles:
   - name: lablabs.rke2
     src: https://github.com/lablabs/ansible-role-rke2.git
-    version: v3.0.0  # Use latest stable version
+    version: 1.49.0
 EOF
 ```
 
