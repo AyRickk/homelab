@@ -32,9 +32,10 @@ Stop starting from scratch every time you rebuild your homelab! This template pr
 
 **Perfect for:** Homelab enthusiasts, DevOps learners, Kubernetes experimenters, self-hosting advocates
 
-## 📋 Table des matières
+## 📋 Table of Contents
 
 - [Features](#-features)
+- [Hardware Requirements](#-hardware-requirements)
 - [Quick Start](#-quick-start)
 - [Architecture](#-architecture)
 - [Prerequisites](#-prerequisites)
@@ -58,7 +59,7 @@ This boilerplate includes everything you need to deploy a production-ready Kuber
 - ✅ **High availability** - 3 master nodes with etcd quorum
 - ✅ **Scalable workers** - 3 worker nodes (easily add more)
 - ✅ **Static networking** - Predictable IP addresses
-- ✅ **SSH hardening** - Key-only auth on non-standard port (2222)
+- ✅ **SSH hardening** - Key-only auth on non-standard port (2222), YubiKey support
 - ✅ **Performance optimized** - VirtIO, iothread, CPU passthrough
 
 ### Comprehensive Documentation
@@ -66,6 +67,32 @@ This boilerplate includes everything you need to deploy a production-ready Kuber
 - ✅ **Architecture diagrams** - Understand what you're building
 - ✅ **Troubleshooting tips** - Common issues and solutions
 - ✅ **Customization examples** - Adapt to your environment
+- ✅ **Real-world setup** - Based on actual production homelab
+
+## 💻 Hardware Requirements
+
+This boilerplate is designed for homelab enthusiasts with a dedicated server. Here's what you need:
+
+### Minimum Requirements
+- **CPU**: 4+ cores (8 cores recommended)
+- **RAM**: 32GB minimum (64GB recommended)
+- **Storage**: 500GB+ (SSD/NVMe recommended for ZFS)
+- **Network**: Gigabit Ethernet
+
+### Reference Hardware Setup
+
+This boilerplate was built and tested on:
+
+- **Server**: Repurposed gaming PC
+- **CPU**: Intel Core i9-9900K (8 cores, 16 threads, up to 5.0 GHz)
+- **RAM**: 64 GB DDR4
+- **GPU**: NVIDIA GeForce RTX 2080 (available for GPU passthrough)
+- **Storage**: ZFS pool on SSD/NVMe
+- **Network**: 1 Gbps Ethernet
+
+> 💡 **GPU Passthrough**: The RTX 2080 can be passed through to VMs for GPU-accelerated workloads like AI/ML, gaming VMs, or transcoding. Documentation for GPU passthrough setup will be added in future updates.
+
+> 🔐 **Security Hardware**: This setup uses a YubiKey for SSH authentication, providing hardware-based security. See the [Getting Started Guide](./GETTING-STARTED.md#yubikey-ssh-setup) for YubiKey configuration.
 
 ## 🚀 Quick Start
 
@@ -147,14 +174,14 @@ Before using this boilerplate, ensure you have:
 
 ### Infrastructure
 - ✅ A server running **Proxmox VE** (tested on 8.x)
-- ✅ At least 16GB RAM and 500GB storage available
+- ✅ At least 32GB RAM (64GB recommended) and 500GB storage available
 - ✅ Network access to Proxmox API
 - ✅ Ubuntu 24.04 LTS ISO uploaded to Proxmox
 
 ### Local Tools
 - ✅ [Terraform](https://www.terraform.io/downloads) >= 1.0
 - ✅ [Packer](https://www.packer.io/downloads) >= 1.9
-- ✅ SSH key pair generated (`ssh-keygen -t rsa -b 4096`)
+- ✅ SSH key pair generated (`ssh-keygen -t rsa -b 4096`) or YubiKey configured
 - ✅ Git installed
 
 ### Knowledge (Helpful but not required)
@@ -384,10 +411,25 @@ Comprehensive guides are available in the [`docs/`](./docs) directory:
 | Document | Description |
 |----------|-------------|
 | [**Getting Started**](./GETTING-STARTED.md) | Complete setup walkthrough for beginners |
-| [**Infrastructure**](./docs/infrastructure.md) | Architecture deep-dive, components, HA setup |
+| [**Infrastructure**](./docs/infrastructure.md) | Architecture deep-dive, components, HA setup, hardware specs |
 | [**Packer**](./docs/packer.md) | VM template creation, customization, troubleshooting |
 | [**Terraform**](./docs/terraform.md) | Infrastructure deployment, state management, workflows |
-| [**Network**](./docs/network.md) | IP planning, DNS, SSH config, firewall rules |
+| [**GPU Passthrough**](./docs/gpu-passthrough.md) | NVIDIA RTX 2080 PCIe passthrough configuration |
+| [**Documentation Roadmap**](./docs/ROADMAP.md) | Planned documentation and future topics |
+
+### Future Documentation Topics
+
+As this homelab evolves, the following guides will be added:
+
+- 🔜 **RKE2 Deployment** - Step-by-step Kubernetes cluster setup
+- 🔜 **Monitoring Stack** - Prometheus, Grafana, and alerting
+- 🔜 **Storage Solutions** - Longhorn, NFS, and persistent volumes
+- 🔜 **GitOps with ArgoCD** - Automated deployments
+- 🔜 **Ingress Controller** - Traefik or Nginx with TLS
+- 🔜 **Backup & Recovery** - Automated backup strategies
+- 🔜 **Homelab Services** - Common self-hosted applications
+
+See the [Documentation Roadmap](./docs/ROADMAP.md) for the complete list and status.
 
 ## 🤝 Contributing
 
@@ -401,6 +443,8 @@ This is a boilerplate/template project, but improvements are welcome!
 - ⭐ **Star the repo** if you find it useful!
 - 🔀 **Share your fork** and customizations with the community
 
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for detailed guidelines.
+
 ### Sharing Your Setup
 
 If you've customized this boilerplate for your homelab:
@@ -411,6 +455,26 @@ If you've customized this boilerplate for your homelab:
 4. Share a link in the Discussions or Issues!
 
 Others can learn from your configuration choices.
+
+## 🎓 Project Inspiration
+
+This project was inspired by excellent community projects like:
+
+- [ChristianLempa/boilerplates](https://github.com/ChristianLempa/boilerplates) - Great collection of boilerplates for homelab
+- Various homelab enthusiasts sharing their Infrastructure as Code setups
+
+The goal is to provide not just working code, but comprehensive documentation that explains the "why" and "how" behind every decision, making it useful both as a template and as a learning resource.
+
+## 📝 About This Project
+
+This homelab project serves multiple purposes:
+
+- **Personal Documentation** - A comprehensive record of my homelab setup and evolution
+- **Boilerplate Template** - Ready-to-use infrastructure code for others
+- **Learning Resource** - Detailed explanations for those new to homelabbing
+- **Living Documentation** - Updated as the homelab grows with new services and capabilities
+
+Whether you're here to fork the boilerplate, learn about homelab setups, or just exploring, welcome! The documentation is written to be helpful whether you're returning to this project after years or discovering it for the first time.
 
 ## 💭 Feedback & Support
 

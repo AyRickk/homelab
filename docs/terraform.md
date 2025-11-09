@@ -1,18 +1,18 @@
-# 🔧 Terraform - Déploiement d'infrastructure
+# 🔧 Terraform - Infrastructure Deployment
 
 ## Introduction
 
-Ce document décrit l'utilisation de Terraform pour déployer et gérer l'infrastructure du cluster RKE2 sur Proxmox.
+This document describes how to use Terraform to deploy and manage the RKE2 cluster infrastructure on Proxmox.
 
-## Vue d'ensemble
+## Overview
 
-Terraform permet de définir l'infrastructure en tant que code et de la gérer de manière déclarative. Toutes les VMs du cluster sont définies dans des fichiers `.tf` et déployées automatiquement.
+Terraform allows you to define infrastructure as code and manage it declaratively. All cluster VMs are defined in `.tf` files and deployed automatically.
 
-## Structure des fichiers
+## File Structure
 
 ```
 terraform/
-├── provider.tf              # Configuration du provider Proxmox
+├── provider.tf              # Proxmox provider configuration
 ├── valaskjalf-master-1.tf   # Master node 1
 ├── valaskjalf-master-2.tf   # Master node 2
 ├── valaskjalf-master-3.tf   # Master node 3
@@ -21,9 +21,9 @@ terraform/
 └── valaskjalf-worker-3.tf   # Worker node 3
 ```
 
-## Configuration du Provider (provider.tf)
+## Provider Configuration (provider.tf)
 
-### Provider Proxmox
+### Proxmox Provider
 
 ```hcl
 terraform {
@@ -36,45 +36,45 @@ terraform {
 }
 ```
 
-**Provider** : [Telmate/proxmox](https://registry.terraform.io/providers/Telmate/proxmox)  
-**Version** : 3.0.2-rc05 (release candidate avec support amélioré)
+**Provider**: [Telmate/proxmox](https://registry.terraform.io/providers/Telmate/proxmox)  
+**Version**: 3.0.2-rc05 (release candidate with improved support)
 
 ### Variables
 
-| Variable | Type | Description | Sensible |
+| Variable | Type | Description | Sensitive |
 |----------|------|-------------|----------|
-| `PROXMOX_API_URL` | string | URL de l'API Proxmox | Non |
-| `PROXMOX_ROOT_USER` | string | Utilisateur Proxmox (ex: root@pam) | Oui |
-| `PROXMOX_ROOT_PASSWORD` | string | Mot de passe Proxmox | Oui |
-| `PUBLIC_SSH_KEY` | string | Clé SSH publique pour les VMs | Oui |
-| `CI_ODIN_PASSWORD` | string | Mot de passe hashé pour cloud-init | Oui |
+| `PROXMOX_API_URL` | string | Proxmox API URL | No |
+| `PROXMOX_ROOT_USER` | string | Proxmox user (e.g., root@pam) | Yes |
+| `PROXMOX_ROOT_PASSWORD` | string | Proxmox password | Yes |
+| `PUBLIC_SSH_KEY` | string | SSH public key for VMs (supports YubiKey) | Yes |
+| `CI_ODIN_PASSWORD` | string | Hashed password for cloud-init | Yes |
 
-### Configuration Provider
+### Provider Configuration
 
 ```hcl
 provider "proxmox" {
   pm_api_url      = var.PROXMOX_API_URL
   pm_user         = var.PROXMOX_ROOT_USER
   pm_password     = var.PROXMOX_ROOT_PASSWORD
-  pm_tls_insecure = true  # Ignorer les erreurs SSL (homelab)
+  pm_tls_insecure = true  # Ignore SSL errors (homelab)
 }
 ```
 
-## Ressources VM
+## VM Resources
 
-Chaque VM est définie par une ressource `proxmox_vm_qemu` avec des paramètres spécifiques.
+Each VM is defined by a `proxmox_vm_qemu` resource with specific parameters.
 
-### Structure d'une ressource Master
+### Master Resource Structure
 
 ```hcl
 resource "proxmox_vm_qemu" "valaskjalf_master_1" {
-  # Configuration de base
+  # Basic configuration
   name        = "valaskjalf-master-1"
   description = "Production rke2 master 1, Master Node, Ubuntu LTS"
   vmid        = 1001
   target_node = "asgard"
   
-  # Clonage depuis template
+  # Clone from template
   clone      = "pkr-ubuntu-noble-1"
   full_clone = true
   
@@ -88,10 +88,10 @@ resource "proxmox_vm_qemu" "valaskjalf_master_1" {
     type    = "host"
   }
   
-  # Mémoire
+  # Memory
   memory = 4096  # 4 GB
   
-  # Stockage
+  # Storage
   disks {
     virtio {
       virtio0 {
@@ -111,14 +111,14 @@ resource "proxmox_vm_qemu" "valaskjalf_master_1" {
     }
   }
   
-  # Réseau
+  # Network
   network {
     id     = 0
     model  = "virtio"
     bridge = "vmbr0"
   }
   
-  # Paramètres système
+  # System parameters
   scsihw = "virtio-scsi-pci"
   bios   = "seabios"
   
@@ -139,25 +139,25 @@ resource "proxmox_vm_qemu" "valaskjalf_master_1" {
 }
 ```
 
-### Structure d'une ressource Worker
+### Worker Resource Structure
 
-Les workers ont plus de ressources que les masters :
+Workers have more resources than masters:
 
 ```hcl
 resource "proxmox_vm_qemu" "valaskjalf_worker_1" {
-  # ... configuration similaire aux masters ...
+  # ... similar configuration to masters ...
   
-  # CPU - Plus de cores pour les workloads
+  # CPU - More cores for workloads
   cpu {
     cores   = 3
     sockets = 1
     type    = "host"
   }
   
-  # Mémoire - Plus de RAM pour les applications
+  # Memory - More RAM for applications
   memory = 12288  # 12 GB
   
-  # Stockage - Plus d'espace disque
+  # Storage - More disk space
   disks {
     virtio {
       virtio0 {
@@ -171,75 +171,75 @@ resource "proxmox_vm_qemu" "valaskjalf_worker_1" {
     # ... cloud-init disk ...
   }
   
-  # IP différente
+  # Different IP
   ipconfig0 = "ip=10.10.10.111/24,gw=10.10.10.1"
 }
 ```
 
-## Configuration détaillée
+## Detailed Configuration
 
-### Clonage
+### Cloning
 
 ```hcl
-clone      = "pkr-ubuntu-noble-1"  # Template source
-full_clone = true                   # Clone complet (pas linked)
+clone      = "pkr-ubuntu-noble-1"  # Source template
+full_clone = true                   # Full clone (not linked)
 ```
 
-**Full clone** : Copie complète et indépendante du template. Recommandé pour la production.
+**Full clone**: Complete independent copy of template. Recommended for production.
 
 ### CPU
 
 ```hcl
 cpu {
-  cores   = 2       # Nombre de cores
-  sockets = 1       # Nombre de sockets
+  cores   = 2       # Number of cores
+  sockets = 1       # Number of sockets
   type    = "host"  # CPU passthrough
 }
 ```
 
-**Type "host"** : Passe toutes les fonctionnalités CPU de l'hôte à la VM. Meilleure performance.
+**Type "host"**: Passes all host CPU features to the VM. Best performance. Takes advantage of Intel i9-9900K capabilities.
 
-### Mémoire
+### Memory
 
-- **Masters** : 4096 MB (4 GB) - Suffisant pour etcd + control plane
-- **Workers** : 12288 MB (12 GB) - Nécessaire pour les workloads applicatifs
+- **Masters**: 4096 MB (4 GB) - Sufficient for etcd + control plane
+- **Workers**: 12288 MB (12 GB) - Necessary for application workloads
 
-### Disques
+### Disks
 
 ```hcl
 disks {
   virtio {
     virtio0 {
       disk {
-        size     = 50           # Taille en GB
-        storage  = "local-zfs"  # Storage pool Proxmox
-        iothread = true         # Thread I/O dédié
+        size     = 50           # Size in GB
+        storage  = "local-zfs"  # Proxmox storage pool
+        iothread = true         # Dedicated I/O thread
       }
     }
   }
   ide {
     ide2 {
       cloudinit {
-        storage = "local-zfs"   # Disque cloud-init
+        storage = "local-zfs"   # Cloud-init disk
       }
     }
   }
 }
 ```
 
-**iothread** : Améliore les performances I/O, important pour etcd sur les masters.
+**iothread**: Improves I/O performance, important for etcd on masters.
 
-### Réseau
+### Network
 
 ```hcl
 network {
-  id     = 0         # Interface réseau 0
+  id     = 0         # Network interface 0
   model  = "virtio"  # Paravirtualization
-  bridge = "vmbr0"   # Bridge Proxmox
+  bridge = "vmbr0"   # Proxmox bridge
 }
 ```
 
-**VirtIO** : Meilleure performance réseau que E1000 émulé.
+**VirtIO**: Better network performance than emulated E1000.
 
 ### Cloud-init
 
@@ -252,42 +252,46 @@ cipassword = var.CI_ODIN_PASSWORD
 sshkeys    = var.PUBLIC_SSH_KEY
 ```
 
-**ipconfig0** : Configuration réseau statique  
-**sshkeys** : Clés SSH publiques (séparées par `\n` si plusieurs)
+**ipconfig0**: Static network configuration  
+**sshkeys**: SSH public keys (separated by `\n` if multiple)
 
-## Inventaire des VMs
+> 💡 **YubiKey Support**: The `PUBLIC_SSH_KEY` variable can contain your YubiKey's SSH public key for hardware-based authentication.
+
+## VM Inventory
 
 ### Masters (Control Plane)
 
-| Nom | VMID | IP | CPU | RAM | Disque | Fichier |
-|-----|------|-----|-----|-----|--------|---------|
+| Name | VMID | IP | CPU | RAM | Disk | File |
+|------|------|-----|-----|-----|------|------|
 | valaskjalf-master-1 | 1001 | 10.10.10.101/24 | 2 cores | 4 GB | 50 GB | valaskjalf-master-1.tf |
 | valaskjalf-master-2 | 1002 | 10.10.10.102/24 | 2 cores | 4 GB | 50 GB | valaskjalf-master-2.tf |
 | valaskjalf-master-3 | 1003 | 10.10.10.103/24 | 2 cores | 4 GB | 50 GB | valaskjalf-master-3.tf |
 
-**Total Masters** : 6 cores, 12 GB RAM, 150 GB disque
+**Total Masters**: 6 cores, 12 GB RAM, 150 GB disk
 
 ### Workers
 
-| Nom | VMID | IP | CPU | RAM | Disque | Fichier |
-|-----|------|-----|-----|-----|--------|---------|
+| Name | VMID | IP | CPU | RAM | Disk | File |
+|------|------|-----|-----|-----|------|------|
 | valaskjalf-worker-1 | 1011 | 10.10.10.111/24 | 3 cores | 12 GB | 100 GB | valaskjalf-worker-1.tf |
 | valaskjalf-worker-2 | 1012 | 10.10.10.112/24 | 3 cores | 12 GB | 100 GB | valaskjalf-worker-2.tf |
 | valaskjalf-worker-3 | 1013 | 10.10.10.113/24 | 3 cores | 12 GB | 100 GB | valaskjalf-worker-3.tf |
 
-**Total Workers** : 9 cores, 36 GB RAM, 300 GB disque
+**Total Workers**: 9 cores, 36 GB RAM, 300 GB disk
 
-### Totaux Cluster
+### Cluster Totals
 
-- **CPUs** : 15 cores (6 masters + 9 workers)
-- **RAM** : 48 GB (12 GB masters + 36 GB workers)
-- **Disque** : 450 GB (150 GB masters + 300 GB workers)
+- **CPUs**: 15 cores (6 masters + 9 workers)
+- **RAM**: 48 GB (12 GB masters + 36 GB workers)
+- **Disk**: 450 GB (150 GB masters + 300 GB workers)
 
-## Utilisation
+> 📊 **Hardware Note**: This configuration fits comfortably on the Intel i9-9900K (8 cores, 16 threads) with 64GB RAM homelab server, leaving resources available for additional VMs or services.
 
-### Prérequis
+## Usage
 
-1. **Terraform installé** :
+### Prerequisites
+
+1. **Terraform installed**:
    ```bash
    # macOS
    brew install terraform
@@ -298,11 +302,11 @@ sshkeys    = var.PUBLIC_SSH_KEY
    sudo mv terraform /usr/local/bin/
    ```
 
-2. **Template Packer créé** : Le template `pkr-ubuntu-noble-1` doit exister dans Proxmox
+2. **Packer template created**: The template `pkr-ubuntu-noble-1` must exist in Proxmox
 
-3. **Accès réseau** : La machine exécutant Terraform doit pouvoir accéder à l'API Proxmox
+3. **Network access**: Machine running Terraform must access Proxmox API
 
-### Configuration des credentials
+### Configure Credentials
 
 ```bash
 cd terraform
@@ -318,9 +322,11 @@ EOF
 chmod 600 credentials.tfvars
 ```
 
-### Générer un mot de passe hashé
+> 💡 **YubiKey Users**: For `PUBLIC_SSH_KEY`, use your YubiKey's SSH public key. You can extract it with: `ssh-keygen -D /path/to/libykcs11.so -e`
 
-Pour `CI_ODIN_PASSWORD` :
+### Generate Hashed Password
+
+For `CI_ODIN_PASSWORD`:
 
 ```bash
 # Python
@@ -329,20 +335,20 @@ python3 -c 'import crypt; print(crypt.crypt("password", crypt.mksalt(crypt.METHO
 # OpenSSL
 openssl passwd -6 -salt "yoursalt" "password"
 
-# mkpasswd (si disponible)
+# mkpasswd (if available)
 mkpasswd -m sha-512
 ```
 
-### Workflow Terraform
+### Terraform Workflow
 
-#### 1. Initialisation
+#### 1. Initialization
 
 ```bash
 cd terraform
 terraform init
 ```
 
-Télécharge le provider Proxmox et initialise le backend.
+Downloads Proxmox provider and initializes backend.
 
 #### 2. Validation
 
@@ -350,7 +356,7 @@ Télécharge le provider Proxmox et initialise le backend.
 terraform validate
 ```
 
-Vérifie la syntaxe des fichiers `.tf`.
+Checks `.tf` file syntax.
 
 #### 3. Plan
 
@@ -358,34 +364,34 @@ Vérifie la syntaxe des fichiers `.tf`.
 terraform plan -var-file="credentials.tfvars"
 ```
 
-Affiche les changements qui seront appliqués :
-- Ressources à créer (+)
-- Ressources à modifier (~)
-- Ressources à détruire (-)
+Shows changes that will be applied:
+- Resources to create (+)
+- Resources to modify (~)
+- Resources to destroy (-)
 
-#### 4. Application
+#### 4. Apply
 
 ```bash
 terraform apply -var-file="credentials.tfvars"
 ```
 
-Applique les changements. Demande confirmation avant d'exécuter.
+Applies changes. Asks for confirmation before execution.
 
-**Avec auto-approve** (attention !) :
+**With auto-approve** (careful!):
 ```bash
 terraform apply -var-file="credentials.tfvars" -auto-approve
 ```
 
-#### 5. Vérification
+#### 5. Verification
 
 ```bash
-# État Terraform
+# Terraform state
 terraform state list
 
-# Détails d'une ressource
+# Resource details
 terraform state show proxmox_vm_qemu.valaskjalf_master_1
 
-# Afficher les outputs (si définis)
+# Show outputs (if defined)
 terraform output
 ```
 
@@ -395,18 +401,18 @@ terraform output
 terraform destroy -var-file="credentials.tfvars"
 ```
 
-Détruit toutes les ressources gérées par Terraform. Demande confirmation.
+Destroys all resources managed by Terraform. Asks for confirmation.
 
-### Déploiement sélectif
+### Selective Deployment
 
-#### Créer uniquement un master
+#### Create Only One Master
 
 ```bash
 terraform apply -var-file="credentials.tfvars" \
   -target=proxmox_vm_qemu.valaskjalf_master_1
 ```
 
-#### Créer tous les masters
+#### Create All Masters
 
 ```bash
 terraform apply -var-file="credentials.tfvars" \
@@ -415,149 +421,149 @@ terraform apply -var-file="credentials.tfvars" \
   -target=proxmox_vm_qemu.valaskjalf_master_3
 ```
 
-#### Recréer un worker
+#### Recreate a Worker
 
 ```bash
-# Marquer pour recréation
+# Mark for recreation
 terraform taint proxmox_vm_qemu.valaskjalf_worker_1
 
-# Appliquer
+# Apply
 terraform apply -var-file="credentials.tfvars"
 ```
 
 ## Modifications
 
-### Ajouter un nœud
+### Add a Node
 
-1. **Copier un fichier existant** :
+1. **Copy existing file**:
    ```bash
    cp valaskjalf-worker-3.tf valaskjalf-worker-4.tf
    ```
 
-2. **Modifier les paramètres** :
+2. **Modify parameters**:
    ```hcl
    resource "proxmox_vm_qemu" "valaskjalf_worker_4" {
      name      = "valaskjalf-worker-4"
      vmid      = 1014
      ipconfig0 = "ip=10.10.10.114/24,gw=10.10.10.1"
-     # ... reste identique ...
+     # ... rest identical ...
    }
    ```
 
-3. **Appliquer** :
+3. **Apply**:
    ```bash
    terraform apply -var-file="credentials.tfvars"
    ```
 
-### Modifier les ressources
+### Modify Resources
 
-**CPU** :
+**CPU**:
 ```hcl
 cpu {
-  cores   = 4  # Au lieu de 2 ou 3
+  cores   = 4  # Instead of 2 or 3
   sockets = 1
   type    = "host"
 }
 ```
 
-**RAM** :
+**RAM**:
 ```hcl
-memory = 16384  # 16 GB au lieu de 4 ou 12
+memory = 16384  # 16 GB instead of 4 or 12
 ```
 
-**Disque** :
+**Disk**:
 ```hcl
 disk {
-  size     = 200  # 200 GB au lieu de 50 ou 100
+  size     = 200  # 200 GB instead of 50 or 100
   storage  = "local-zfs"
   iothread = true
 }
 ```
 
-Après modification :
+After modification:
 ```bash
 terraform apply -var-file="credentials.tfvars"
 ```
 
-### Supprimer un nœud
+### Remove a Node
 
-1. **Supprimer le fichier** ou commenter la ressource
-2. **Appliquer** :
+1. **Delete the file** or comment out the resource
+2. **Apply**:
    ```bash
    terraform apply -var-file="credentials.tfvars"
    ```
 
 ## Troubleshooting
 
-### Erreur de connexion à Proxmox
+### Proxmox Connection Error
 
 ```
 Error: error creating VM: error calling post https://...
 ```
 
-**Solutions** :
-- Vérifier l'URL de l'API
-- Vérifier les credentials
-- Vérifier la connectivité réseau
-- Vérifier les permissions de l'utilisateur
+**Solutions**:
+- Verify API URL
+- Check credentials
+- Verify network connectivity
+- Check user permissions
 
-### Erreur "Template not found"
+### "Template not found" Error
 
 ```
 Error: template 'pkr-ubuntu-noble-1' not found
 ```
 
-**Solution** : Créer le template avec Packer d'abord.
+**Solution**: Create template with Packer first.
 
-### Erreur d'IP en conflit
+### IP Conflict Error
 
 ```
 Error: IP address already in use
 ```
 
-**Solution** : Vérifier que l'IP n'est pas déjà utilisée. Modifier `ipconfig0`.
+**Solution**: Verify IP isn't already used. Modify `ipconfig0`.
 
-### Timeout lors de la création
+### Creation Timeout
 
 ```
 Error: timeout while waiting for VM to become ready
 ```
 
-**Solutions** :
-- Vérifier que QEMU Guest Agent est installé dans le template
-- Augmenter les timeouts dans le provider
-- Vérifier les logs Proxmox
+**Solutions**:
+- Verify QEMU Guest Agent is installed in template
+- Increase timeouts in provider
+- Check Proxmox logs
 
-### État Terraform corrompu
+### Corrupted Terraform State
 
 ```bash
-# Backup du state
+# Backup state
 cp terraform.tfstate terraform.tfstate.backup
 
-# Réinitialiser une ressource
+# Reset a resource
 terraform state rm proxmox_vm_qemu.valaskjalf_worker_1
 
-# Réimporter depuis Proxmox
+# Re-import from Proxmox
 terraform import proxmox_vm_qemu.valaskjalf_worker_1 asgard/qemu/1011
 ```
 
-## État Terraform
+## Terraform State
 
-### Fichier terraform.tfstate
+### terraform.tfstate File
 
-**Contient** :
-- État actuel de toutes les ressources
-- Métadonnées et IDs Proxmox
-- Mappings entre ressources Terraform et VMs Proxmox
+**Contains**:
+- Current state of all resources
+- Metadata and Proxmox IDs
+- Mappings between Terraform resources and Proxmox VMs
 
-**Important** :
-- Ne pas éditer manuellement
-- Sauvegarder régulièrement
-- Ne pas committer (déjà dans .gitignore)
+**Important**:
+- Don't edit manually
+- Backup regularly
+- Don't commit (already in .gitignore)
 
-### Backend distant (optionnel)
+### Remote Backend (optional)
 
-Pour un usage en équipe ou backup automatique :
+For team use or automatic backup:
 
 ```hcl
 terraform {
@@ -569,21 +575,21 @@ terraform {
 }
 ```
 
-Ou autres backends : Consul, etcd, HTTP, etc.
+Or other backends: Consul, etcd, HTTP, etc.
 
-## Bonnes pratiques
+## Best Practices
 
-1. **Variables** : Utiliser des fichiers `.tfvars` pour les credentials
-2. **Modules** : Pour réutiliser du code (optionnel ici)
-3. **State** : Sauvegarder `terraform.tfstate` régulièrement
-4. **Plan** : Toujours faire un `plan` avant `apply`
-5. **Commentaires** : Documenter les configurations complexes
-6. **Tags** : Utiliser des tags pour organiser les ressources
-7. **Validation** : Tester sur un nœud avant de déployer tout le cluster
+1. **Variables**: Use `.tfvars` files for credentials
+2. **Modules**: For code reuse (optional here)
+3. **State**: Backup `terraform.tfstate` regularly
+4. **Plan**: Always `plan` before `apply`
+5. **Comments**: Document complex configurations
+6. **Tags**: Use tags to organize resources
+7. **Validation**: Test on one node before deploying entire cluster
 
-## Automatisation
+## Automation
 
-### Script de déploiement
+### Deployment Script
 
 ```bash
 #!/bin/bash
@@ -607,7 +613,7 @@ echo "Deployment complete!"
 terraform state list
 ```
 
-### CI/CD (exemple GitLab CI)
+### CI/CD (GitLab CI example)
 
 ```yaml
 stages:
@@ -640,7 +646,7 @@ apply:
   when: manual
 ```
 
-## Références
+## References
 
 - [Terraform Documentation](https://www.terraform.io/docs)
 - [Telmate Proxmox Provider](https://registry.terraform.io/providers/Telmate/proxmox)
