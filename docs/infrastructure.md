@@ -81,8 +81,9 @@ Virtual machine template created with Packer, based on Ubuntu 24.04 LTS (Noble N
 - QEMU Guest Agent installed
 - Hardened SSH (port 2222, key-only authentication)
 - Base packages: vim, zip, unzip
-- Locale: en_US.UTF-8
-- Timezone: Configurable via cloud-init
+- Locale: fr_FR (French)
+- Keyboard: fr (AZERTY)
+- Timezone: Europe/Paris (configurable via cloud-init)
 
 ### RKE2 Cluster
 
