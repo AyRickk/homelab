@@ -18,29 +18,6 @@ This document tracks planned documentation additions and improvements as the hom
 
 ### High Priority
 
-#### ⚙️ RKE2 Cluster Setup
-**Status**: ✅ Completed  
-**Documentation**: [docs/rke2-installation.md](rke2-installation.md)  
-**Topics covered**:
-- RKE2 installation using Ansible automation
-- High availability setup with 3 master nodes
-- Cilium CNI with eBPF networking
-- Hubble observability configuration
-- Cluster verification and troubleshooting
-- Post-installation next steps
-
-#### 🔐 Security Hardening
-**Status**: Planned  
-**Topics to cover**:
-- Firewall configuration (Proxmox and VMs)
-- Network segmentation with VLANs
-- Certificate management with cert-manager
-- Secrets management with HashiCorp Vault
-- Regular security updates strategy
-- Backup encryption
-
-### Medium Priority
-
 #### 📊 Monitoring and Observability
 **Status**: Planned  
 **Topics to cover**:
@@ -50,6 +27,8 @@ This document tracks planned documentation additions and improvements as the hom
 - Log aggregation (Loki or ELK)
 - Node and pod metrics
 - Custom alerts and notifications
+
+### Medium Priority
 
 #### 📦 Storage Solutions
 **Status**: Planned  
@@ -132,7 +111,6 @@ _No requests yet - open an issue to suggest topics!_
 Want to help write documentation? See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
 
 Priority topics to contribute:
-- GPU passthrough if you have experience
 - Service-specific guides
 - Troubleshooting sections
 - Performance optimization tips
