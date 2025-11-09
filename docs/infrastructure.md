@@ -1,10 +1,10 @@
 # 🏗️ Infrastructure Overview
 
-## Vue d'ensemble
+## Overview
 
-Ce document décrit l'architecture de l'infrastructure homelab basée sur Proxmox et RKE2.
+This document describes the homelab infrastructure architecture based on Proxmox and RKE2.
 
-## Architecture globale
+## Global Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -40,62 +40,73 @@ Ce document décrit l'architecture de l'infrastructure homelab basée sur Proxmo
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Composants
+## Components
+
+### Hardware Specifications
+
+This homelab runs on a repurposed gaming PC with the following specifications:
+
+- **CPU**: Intel Core i9-9900K (8 cores, 16 threads, up to 5.0 GHz)
+- **RAM**: 64 GB DDR4
+- **GPU**: NVIDIA GeForce RTX 2080 (available for GPU passthrough to VMs)
+- **Storage**: ZFS pool (configured for high performance and reliability)
+
+> 💡 **Note**: The RTX 2080 can be passed through to VMs for GPU-accelerated workloads. See the [GPU Passthrough Guide](./gpu-passthrough.md) for detailed setup instructions.
 
 ### Proxmox VE
 
-**Nœud** : `asgard`
+**Node**: `asgard`
 
-Proxmox Virtual Environment est l'hyperviseur de base qui héberge toutes les machines virtuelles. Il fournit :
+Proxmox Virtual Environment is the base hypervisor that hosts all virtual machines. It provides:
 
-- Virtualisation KVM/QEMU
-- Gestion centralisée via API REST
-- Storage ZFS pour les performances et la fiabilité
-- Réseau virtuel via bridge Linux
+- KVM/QEMU Virtualization
+- Centralized management via REST API
+- ZFS Storage for performance and reliability
+- Virtual networking via Linux bridge
 
-**Configuration** :
-- Storage principal : `local-zfs`
-- Bridge réseau : `vmbr0`
-- ISO storage : `local`
+**Configuration**:
+- Primary Storage: `local-zfs`
+- Network Bridge: `vmbr0`
+- ISO Storage: `local`
 
-### Template VM Ubuntu
+### Ubuntu VM Template
 
-**Template** : `pkr-ubuntu-noble-1` (VMID 90001)
+**Template**: `pkr-ubuntu-noble-1` (VMID 90001)
 
-Template de machine virtuelle créé avec Packer, basé sur Ubuntu 24.04 LTS (Noble Numbat). Ce template sert de base pour tous les nœuds du cluster.
+Virtual machine template created with Packer, based on Ubuntu 24.04 LTS (Noble Numbat). This template serves as the base for all cluster nodes.
 
-**Caractéristiques** :
-- OS : Ubuntu 24.04.3 LTS Server
-- Cloud-init activé pour la personnalisation automatique
-- QEMU Guest Agent installé
-- SSH sécurisé (port 2222, authentification par clé uniquement)
-- Packages de base : vim, zip, unzip
-- Locale : fr_FR
-- Timezone : Europe/Paris
+**Features**:
+- OS: Ubuntu 24.04.3 LTS Server
+- Cloud-init enabled for automatic customization
+- QEMU Guest Agent installed
+- Hardened SSH (port 2222, key-only authentication)
+- Base packages: vim, zip, unzip
+- Locale: en_US.UTF-8
+- Timezone: Configurable via cloud-init
 
-### Cluster RKE2
+### RKE2 Cluster
 
-**Nom du cluster** : `valaskjalf`
+**Cluster name**: `valaskjalf`
 
-RKE2 (Rancher Kubernetes Engine 2) est une distribution Kubernetes certifiée, optimisée pour la sécurité et la conformité.
+RKE2 (Rancher Kubernetes Engine 2) is a certified Kubernetes distribution, optimized for security and compliance.
 
 #### Control Plane (Masters)
 
-Les nœuds masters exécutent les composants du plan de contrôle Kubernetes :
-- **etcd** : base de données distribuée du cluster
-- **kube-apiserver** : point d'entrée de l'API Kubernetes
-- **kube-scheduler** : planification des pods
-- **kube-controller-manager** : contrôleurs de ressources
+Master nodes run the Kubernetes control plane components:
+- **etcd**: distributed cluster database
+- **kube-apiserver**: Kubernetes API entry point
+- **kube-scheduler**: pod scheduling
+- **kube-controller-manager**: resource controllers
 
-**Configuration par master** :
-- vCPU : 2 cores (type host)
-- RAM : 4 GB
-- Disque : 50 GB (local-zfs, iothread activé)
-- Network : VirtIO sur vmbr0
-- SCSI : virtio-scsi-pci
-- Auto-boot : activé
+**Configuration per master**:
+- vCPU: 2 cores (host type)
+- RAM: 4 GB
+- Disk: 50 GB (local-zfs, iothread enabled)
+- Network: VirtIO on vmbr0
+- SCSI: virtio-scsi-pci
+- Auto-boot: enabled
 
-| Hostname | VMID | IP Address | Rôle |
+| Hostname | VMID | IP Address | Role |
 |----------|------|------------|------|
 | valaskjalf-master-1 | 1001 | 10.10.10.101/24 | Control Plane |
 | valaskjalf-master-2 | 1002 | 10.10.10.102/24 | Control Plane |
@@ -103,63 +114,65 @@ Les nœuds masters exécutent les composants du plan de contrôle Kubernetes :
 
 #### Worker Nodes
 
-Les nœuds workers exécutent les charges de travail applicatives (pods, conteneurs).
+Worker nodes run application workloads (pods, containers).
 
-**Configuration par worker** :
-- vCPU : 3 cores (type host)
-- RAM : 12 GB
-- Disque : 100 GB (local-zfs, iothread activé)
-- Network : VirtIO sur vmbr0
-- SCSI : virtio-scsi-pci
-- Auto-boot : activé
+**Configuration per worker**:
+- vCPU: 3 cores (host type)
+- RAM: 12 GB
+- Disk: 100 GB (local-zfs, iothread enabled)
+- Network: VirtIO on vmbr0
+- SCSI: virtio-scsi-pci
+- Auto-boot: enabled
 
-| Hostname | VMID | IP Address | Rôle |
+| Hostname | VMID | IP Address | Role |
 |----------|------|------------|------|
 | valaskjalf-worker-1 | 1011 | 10.10.10.111/24 | Worker |
 | valaskjalf-worker-2 | 1012 | 10.10.10.112/24 | Worker |
 | valaskjalf-worker-3 | 1013 | 10.10.10.113/24 | Worker |
 
-## Réseau
+## Network
 
-### Configuration IP
+### IP Configuration
 
-- **Réseau** : 10.10.10.0/24
-- **Passerelle** : 10.10.10.1
-- **DNS** : 10.10.10.1
-- **Attribution** : IP statiques via cloud-init
+- **Network**: 10.10.10.0/24
+- **Gateway**: 10.10.10.1
+- **DNS**: 10.10.10.1
+- **Assignment**: Static IPs via cloud-init
 
-### Plan d'adressage
+### IP Addressing Plan
 
-| Plage | Usage |
+| Range | Usage |
 |-------|-------|
 | 10.10.10.1 | Gateway/DNS |
-| 10.10.10.101-103 | Masters RKE2 |
-| 10.10.10.111-113 | Workers RKE2 |
+| 10.10.10.101-103 | RKE2 Masters |
+| 10.10.10.111-113 | RKE2 Workers |
 
-## Sécurité
+## Security
 
 ### SSH
 
-- **Port** : 2222 (non-standard pour réduire les scans automatiques)
-- **Authentification** : Clé publique uniquement
-- **Root login** : Désactivé
-- **Password authentication** : Désactivé
-- **Utilisateur** : `odin` avec privilèges sudo
+- **Port**: 2222 (non-standard to reduce automated scans)
+- **Authentication**: Public key only (supports YubiKey)
+- **Root login**: Disabled
+- **Password authentication**: Disabled
+- **User**: `odin` with sudo privileges
+
+> 💡 **YubiKey Support**: This setup supports YubiKey hardware authentication for SSH. See the [Getting Started Guide](../GETTING-STARTED.md#yubikey-ssh-setup) for configuration instructions.
 
 ### Cloud-init
 
-- Datasources : ConfigDrive, NoCloud
-- Configuration réseau via cloud-init (pas de netplan persistant)
-- SSH keys injectées au démarrage
-- Mot de passe hashé pour accès console si nécessaire
+- Datasources: ConfigDrive, NoCloud
+- Network configuration via cloud-init (no persistent netplan)
+- SSH keys injected at boot
+- Hashed password for console access if needed
 
 ## Storage
 
 ### Proxmox Storage
 
-- **Type** : ZFS
-- **Pool** : `local-zfs`
-- **Fonctionnalités** :
+- **Type**: ZFS
+- **Pool**: `local-zfs`
+- **Features**:
   - Snapshots
   - Compression
   - Checksums
@@ -167,94 +180,95 @@ Les nœuds workers exécutent les charges de travail applicatives (pods, contene
 
 ### VM Disks
 
-- **Format** : Raw (meilleure performance)
-- **Bus** : VirtIO (performance optimale)
-- **iothread** : Activé (améliore les performances I/O)
+- **Format**: Raw (best performance)
+- **Bus**: VirtIO (optimal performance)
+- **iothread**: Enabled (improves I/O performance)
 
 ## Performance
 
-### Optimisations CPU
+### CPU Optimizations
 
-- **Type** : `host` (CPU passthrough)
-- Toutes les fonctionnalités CPU de l'hôte sont passées aux VMs
-- Meilleure performance pour les charges de travail Kubernetes
+- **Type**: `host` (CPU passthrough)
+- All host CPU features are passed to VMs
+- Best performance for Kubernetes workloads
+- Takes advantage of Intel i9-9900K features
 
-### Optimisations réseau
+### Network Optimizations
 
-- **Modèle** : VirtIO (paravirtualization)
-- Meilleure performance réseau que E1000 émulé
-- Support des fonctionnalités avancées (multiqueue, etc.)
+- **Model**: VirtIO (paravirtualization)
+- Better network performance than emulated E1000
+- Support for advanced features (multiqueue, etc.)
 
-### Optimisations disque
+### Disk Optimizations
 
-- **iothread** : Un thread dédié pour les opérations I/O
-- **VirtIO SCSI** : Meilleure performance que IDE
-- **ZFS** : Compression et checksums transparents
+- **iothread**: Dedicated thread for I/O operations
+- **VirtIO SCSI**: Better performance than IDE
+- **ZFS**: Transparent compression and checksums
 
-## Haute disponibilité
+## High Availability
 
 ### Masters
 
-- **3 nœuds masters** pour le quorum etcd (tolérance : 1 panne)
-- Distribution sur le même hôte Proxmox (single node homelab)
-- Auto-boot activé pour redémarrage automatique
+- **3 master nodes** for etcd quorum (tolerates 1 failure)
+- Distributed on the same Proxmox host (single node homelab)
+- Auto-boot enabled for automatic restart
 
 ### Workers
 
-- **3 nœuds workers** pour la distribution des charges
-- Capacité à gérer la panne d'un worker
-- Auto-boot activé
+- **3 worker nodes** for workload distribution
+- Can handle worker node failure
+- Auto-boot enabled
 
-## Monitoring et gestion
+## Monitoring and Management
 
 ### QEMU Guest Agent
 
-Installé sur toutes les VMs pour :
-- Informations système détaillées
-- Shutdown/reboot propres
-- Snapshot avec freeze du filesystem
-- Injection de mots de passe
+Installed on all VMs for:
+- Detailed system information
+- Clean shutdown/reboot
+- Filesystem freeze for snapshots
+- Password injection
 
-### Tags Proxmox
+### Proxmox Tags
 
-- Tag `rke2` appliqué à toutes les VMs du cluster
-- Facilite le filtrage et l'organisation dans l'interface Proxmox
+- Tag `rke2` applied to all cluster VMs
+- Facilitates filtering and organization in Proxmox interface
 
-## Évolutivité
+## Scalability
 
-### Ajouter un master
+### Adding a Master
 
-1. Copier et adapter un fichier `valaskjalf-master-X.tf`
-2. Modifier : name, vmid, IP
-3. Appliquer avec Terraform
+1. Copy and adapt a `valaskjalf-master-X.tf` file
+2. Modify: name, vmid, IP
+3. Apply with Terraform
 
-### Ajouter un worker
+### Adding a Worker
 
-1. Copier et adapter un fichier `valaskjalf-worker-X.tf`
-2. Modifier : name, vmid, IP
-3. Appliquer avec Terraform
+1. Copy and adapt a `valaskjalf-worker-X.tf` file
+2. Modify: name, vmid, IP
+3. Apply with Terraform
 
-### Ressources
+### Resources
 
-Ajuster dans les fichiers Terraform :
-- `cpu.cores` : nombre de vCPUs
-- `memory` : RAM en MB
-- `disks.virtio.virtio0.disk.size` : taille disque en GB
+Adjust in Terraform files:
+- `cpu.cores`: number of vCPUs
+- `memory`: RAM in MB
+- `disks.virtio.virtio0.disk.size`: disk size in GB
 
 ## Maintenance
 
 ### Backup
 
-Utiliser les fonctionnalités de backup Proxmox :
-- Backup planifié des VMs
-- Snapshots ZFS
-- Export de la configuration Terraform
+Use Proxmox backup features:
+- Scheduled VM backups
+- ZFS snapshots
+- Export Terraform configuration
 
-### Mises à jour
+### Updates
 
-- OS : `apt update && apt upgrade` sur chaque VM
-- RKE2 : via les mécanismes de mise à jour RKE2
-- Template : Reconstruire avec Packer et redéployer
+- OS: `apt update && apt upgrade` on each VM
+- RKE2: via RKE2 update mechanisms
+- Template: Rebuild with Packer and redeploy
 
 ### Destruction
 
@@ -263,4 +277,4 @@ cd terraform
 terraform destroy -var-file="credentials.tfvars"
 ```
 
-> ⚠️ **Attention** : Cela supprimera toutes les VMs définies dans Terraform !
+> ⚠️ **Warning**: This will permanently delete all VMs defined in Terraform!

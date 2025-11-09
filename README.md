@@ -32,9 +32,10 @@ Stop starting from scratch every time you rebuild your homelab! This template pr
 
 **Perfect for:** Homelab enthusiasts, DevOps learners, Kubernetes experimenters, self-hosting advocates
 
-## 📋 Table des matières
+## 📋 Table of Contents
 
 - [Features](#-features)
+- [Hardware Requirements](#-hardware-requirements)
 - [Quick Start](#-quick-start)
 - [Architecture](#-architecture)
 - [Prerequisites](#-prerequisites)
@@ -58,7 +59,7 @@ This boilerplate includes everything you need to deploy a production-ready Kuber
 - ✅ **High availability** - 3 master nodes with etcd quorum
 - ✅ **Scalable workers** - 3 worker nodes (easily add more)
 - ✅ **Static networking** - Predictable IP addresses
-- ✅ **SSH hardening** - Key-only auth on non-standard port (2222)
+- ✅ **SSH hardening** - Key-only auth on non-standard port (2222), YubiKey support
 - ✅ **Performance optimized** - VirtIO, iothread, CPU passthrough
 
 ### Comprehensive Documentation
@@ -66,6 +67,32 @@ This boilerplate includes everything you need to deploy a production-ready Kuber
 - ✅ **Architecture diagrams** - Understand what you're building
 - ✅ **Troubleshooting tips** - Common issues and solutions
 - ✅ **Customization examples** - Adapt to your environment
+- ✅ **Real-world setup** - Based on actual production homelab
+
+## 💻 Hardware Requirements
+
+This boilerplate is designed for homelab enthusiasts with a dedicated server. Here's what you need:
+
+### Minimum Requirements
+- **CPU**: 4+ cores (8 cores recommended)
+- **RAM**: 32GB minimum (64GB recommended)
+- **Storage**: 500GB+ (SSD/NVMe recommended for ZFS)
+- **Network**: Gigabit Ethernet
+
+### Reference Hardware Setup
+
+This boilerplate was built and tested on:
+
+- **Server**: Repurposed gaming PC
+- **CPU**: Intel Core i9-9900K (8 cores, 16 threads, up to 5.0 GHz)
+- **RAM**: 64 GB DDR4
+- **GPU**: NVIDIA GeForce RTX 2080 (available for GPU passthrough)
+- **Storage**: ZFS pool on SSD/NVMe
+- **Network**: 1 Gbps Ethernet
+
+> 💡 **GPU Passthrough**: The RTX 2080 can be passed through to VMs for GPU-accelerated workloads like AI/ML, gaming VMs, or transcoding. Documentation for GPU passthrough setup will be added in future updates.
+
+> 🔐 **Security Hardware**: This setup uses a YubiKey for SSH authentication, providing hardware-based security. See the [Getting Started Guide](./GETTING-STARTED.md#yubikey-ssh-setup) for YubiKey configuration.
 
 ## 🚀 Quick Start
 
@@ -147,14 +174,14 @@ Before using this boilerplate, ensure you have:
 
 ### Infrastructure
 - ✅ A server running **Proxmox VE** (tested on 8.x)
-- ✅ At least 16GB RAM and 500GB storage available
+- ✅ At least 32GB RAM (64GB recommended) and 500GB storage available
 - ✅ Network access to Proxmox API
 - ✅ Ubuntu 24.04 LTS ISO uploaded to Proxmox
 
 ### Local Tools
 - ✅ [Terraform](https://www.terraform.io/downloads) >= 1.0
 - ✅ [Packer](https://www.packer.io/downloads) >= 1.9
-- ✅ SSH key pair generated (`ssh-keygen -t rsa -b 4096`)
+- ✅ SSH key pair generated (`ssh-keygen -t rsa -b 4096`) or YubiKey configured
 - ✅ Git installed
 
 ### Knowledge (Helpful but not required)
@@ -384,10 +411,22 @@ Comprehensive guides are available in the [`docs/`](./docs) directory:
 | Document | Description |
 |----------|-------------|
 | [**Getting Started**](./GETTING-STARTED.md) | Complete setup walkthrough for beginners |
-| [**Infrastructure**](./docs/infrastructure.md) | Architecture deep-dive, components, HA setup |
+| [**Infrastructure**](./docs/infrastructure.md) | Architecture deep-dive, components, HA setup, hardware specs |
 | [**Packer**](./docs/packer.md) | VM template creation, customization, troubleshooting |
 | [**Terraform**](./docs/terraform.md) | Infrastructure deployment, state management, workflows |
-| [**Network**](./docs/network.md) | IP planning, DNS, SSH config, firewall rules |
+
+### Future Documentation Topics
+
+As this homelab evolves, the following guides will be added:
+
+- 🔜 **GPU Passthrough** - Configure NVIDIA RTX 2080 passthrough to VMs
+- 🔜 **YubiKey Setup** - Detailed hardware security key configuration
+- 🔜 **RKE2 Deployment** - Step-by-step Kubernetes cluster setup
+- 🔜 **Monitoring Stack** - Prometheus, Grafana, and alerting
+- 🔜 **Storage Solutions** - Longhorn, NFS, and persistent volumes
+- 🔜 **Network Configuration** - Advanced networking, VLANs, and firewall rules
+- 🔜 **Backup & Recovery** - Automated backup strategies and disaster recovery
+- 🔜 **Service Deployments** - Common homelab services and applications
 
 ## 🤝 Contributing
 

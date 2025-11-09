@@ -6,11 +6,13 @@ This guide will walk you through forking and customizing this homelab boilerplat
 
 Before you begin, ensure you have:
 
-- ✅ A server running Proxmox VE (tested on 9.x)
+- ✅ A server running Proxmox VE (tested on 8.x and 9.x)
 - ✅ Basic knowledge of Terraform and Packer
-- ✅ SSH key pair generated (`ssh-keygen -t rsa -b 4096`) I personnaly use a [Yubikey](https://www.yubico.com/get-yubikey/)
+- ✅ SSH key pair generated (`ssh-keygen -t rsa -b 4096`) or YubiKey configured for SSH
 - ✅ [Terraform](https://www.terraform.io/downloads) installed locally (>= 1.0)
 - ✅ [Packer](https://www.packer.io/downloads) installed locally (>= 1.9)
+
+> 🔐 **YubiKey Users**: This guide includes instructions for using YubiKey hardware security keys for SSH authentication. See the [YubiKey SSH Setup](#yubikey-ssh-setup) section below.
 
 ## Step 1: Fork This Repository
 
@@ -179,7 +181,7 @@ python3 -c 'import crypt; print(crypt.crypt("yourpassword", crypt.mksalt(crypt.M
 
 ### 4.1 Upload Ubuntu ISO
 
-Download Ubuntu 24.04 LTS ISO to your Proxmox server by downloading it on Proxmox UI or by uploading it manually :
+Download Ubuntu 24.04 LTS ISO to your Proxmox server through the Proxmox UI or by uploading it manually:
 
 ```bash
 # On Proxmox server
@@ -192,6 +194,114 @@ wget https://releases.ubuntu.com/24.04.3/ubuntu-24.04.3-live-server-amd64.iso
 Ensure you have a `local-zfs` storage pool, or update the storage pool name in:
 - `packer/90001-pkr-ubuntu-noble-1/build.pkr.hcl`
 - All Terraform files (`terraform/valaskjalf-*.tf`)
+
+## YubiKey SSH Setup
+
+If you're using a YubiKey for SSH authentication (recommended for enhanced security), follow these steps:
+
+### Prerequisites
+
+- A YubiKey 5 series (or compatible device)
+- YubiKey Manager installed on your computer
+- OpenSC or ykcs11 library installed
+
+### Setup Instructions
+
+#### 1. Install Required Software
+
+**macOS**:
+```bash
+brew install ykman opensc
+```
+
+**Linux**:
+```bash
+# Ubuntu/Debian
+sudo apt install yubikey-manager opensc
+
+# Fedora/RHEL
+sudo dnf install yubikey-manager opensc
+```
+
+#### 2. Configure YubiKey PIV
+
+```bash
+# Check YubiKey is detected
+ykman list
+
+# Set up PIV (if not already configured)
+ykman piv info
+
+# Generate SSH key on YubiKey (slot 9a for authentication)
+ykman piv keys generate 9a /tmp/public-key.pem
+ykman piv certificates generate -s "SSH Key" 9a /tmp/public-key.pem
+```
+
+#### 3. Extract SSH Public Key
+
+```bash
+# Extract the public key in SSH format
+ssh-keygen -D /usr/local/lib/libykcs11.dylib -e > ~/.ssh/yubikey_pub.key
+
+# Or on Linux:
+ssh-keygen -D /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so -e > ~/.ssh/yubikey_pub.key
+
+# Display the key (you'll need this for Packer and Terraform)
+cat ~/.ssh/yubikey_pub.key
+```
+
+#### 4. Configure SSH Client
+
+Add to your `~/.ssh/config`:
+
+```
+# YubiKey SSH configuration
+Host homelab-*
+    Port 2222
+    User odin
+    PKCS11Provider /usr/local/lib/libykcs11.dylib  # macOS
+    # PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so  # Linux
+
+Host homelab-master-1
+    HostName 10.10.10.101
+
+Host homelab-master-2
+    HostName 10.10.10.102
+
+Host homelab-master-3
+    HostName 10.10.10.103
+
+Host homelab-worker-1
+    HostName 10.10.10.111
+
+Host homelab-worker-2
+    HostName 10.10.10.112
+
+Host homelab-worker-3
+    HostName 10.10.10.113
+```
+
+#### 5. Use YubiKey Public Key in Credentials
+
+When setting up your `credentials.pkrvars.hcl` and `credentials.tfvars` files, use the public key from `~/.ssh/yubikey_pub.key` for the `public_key` or `PUBLIC_SSH_KEY` variable.
+
+### Testing YubiKey SSH
+
+After deploying your VMs, test the connection:
+
+```bash
+# You'll need to touch your YubiKey when prompted
+ssh homelab-master-1
+```
+
+The YubiKey LED will blink when it's waiting for you to touch it to complete authentication.
+
+### Benefits of YubiKey Authentication
+
+- 🔐 **Hardware-based security** - Private key never leaves the device
+- 🚫 **Prevents key theft** - Even if your computer is compromised
+- 👆 **Physical presence required** - Touch confirmation for each authentication
+- 🔑 **Multi-factor** - Something you have (YubiKey) + something you know (PIN)
 
 ## Step 5: Build the Template
 
@@ -256,7 +366,7 @@ In Proxmox web interface:
 # Test connection (port 2222!)
 ssh -p 2222 odin@10.10.10.101
 
-# Or configure ~/.ssh/config with basic ssh public key:
+# Or configure ~/.ssh/config with basic SSH public key:
 cat >> ~/.ssh/config << EOF
 Host homelab-master-1
     HostName 10.10.10.101
@@ -265,18 +375,21 @@ Host homelab-master-1
     IdentityFile ~/.ssh/id_rsa
 EOF
 
-# Or configure ~/.ssh/config yubikey ssh public key:
+# Or configure ~/.ssh/config for YubiKey SSH authentication:
 cat >> ~/.ssh/config << EOF
 Host homelab-master-1
     HostName 10.10.10.101
     Port 2222
     User odin
-    PKCS11Provider /opt/homebrew/lib/libykcs11.dylib (this path is for MacOS, change it if using Linux)
+    PKCS11Provider /usr/local/lib/libykcs11.dylib  # macOS path
+    # PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so  # Linux path
 EOF
 
 # Then simply:
 ssh homelab-master-1
 ```
+
+> 💡 **YubiKey Users**: When connecting with YubiKey, you'll need to touch your YubiKey when it blinks to complete authentication.
 
 ## Step 8: Setup RKE2 (Next Steps)
 
@@ -334,16 +447,29 @@ For detailed RKE2 setup, see: https://docs.rke2.io/install/ha
 - Ensure IPs aren't already in use on your network
 - Update IPs in Terraform files to avoid conflicts
 
-## Futur Changes that I will implement
+## Future Changes
 
-Now that the base infrastructure is running, I will:
+Now that the base infrastructure is running, planned additions include:
 
-- 🔒 **Add Ansible** for configuration management and RKE2 implementation
-- 🔐 **Setup Vault** for secrets management
-- 📊 **Deploy monitoring** (Prometheus + Grafana)
-- 🔄 **Add GitOps** with ArgoCD
-- 🌐 **Setup Ingress** with Traefik or Nginx Ingress
-- 📦 **Deploy various applications** to RKE2 cluster
+- 🔒 **Ansible** for configuration management and RKE2 implementation
+- 🔐 **HashiCorp Vault** for secrets management
+- 📊 **Monitoring** with Prometheus and Grafana
+- 🔄 **GitOps** with ArgoCD or Flux
+- 🌐 **Ingress Controller** with Traefik or Nginx Ingress
+- 📦 **Application deployments** to the RKE2 cluster
+- 🎮 **GPU Passthrough** for NVIDIA RTX 2080 to specific VMs
+- 🔐 **Certificate Management** with cert-manager
+- 📁 **Storage Solutions** with Longhorn or NFS
+- 🌊 **Service Mesh** with Istio or Linkerd (optional)
+
+### Documentation Planned
+
+- **GPU Passthrough Guide** - Detailed instructions for passing through the RTX 2080 to VMs
+- **RKE2 Cluster Setup** - Complete guide for installing and configuring RKE2
+- **Homelab Services** - Documentation for various self-hosted services
+- **Backup Strategies** - Automated backup and disaster recovery procedures
+- **Network Architecture** - Advanced networking, VLANs, and firewall configurations
+- **Performance Tuning** - Optimize performance on the i9-9900K platform
 
 ## Next Steps
 

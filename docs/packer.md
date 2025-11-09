@@ -1,35 +1,35 @@
-# 📦 Packer - Création de templates VM
+# 📦 Packer - VM Template Creation
 
 ## Introduction
 
-Ce document décrit l'utilisation de Packer pour créer des templates de machines virtuelles Ubuntu sur Proxmox.
+This document describes how to use Packer to create Ubuntu virtual machine templates on Proxmox.
 
-## Vue d'ensemble
+## Overview
 
-Packer permet de créer des templates VM reproductibles et automatisés. Le template créé sert de base pour tous les nœuds du cluster RKE2.
+Packer allows you to create reproducible and automated VM templates. The created template serves as the base for all RKE2 cluster nodes.
 
-## Template Ubuntu Noble
+## Ubuntu Noble Template
 
-**Emplacement** : `packer/90001-pkr-ubuntu-noble-1/`
+**Location**: `packer/90001-pkr-ubuntu-noble-1/`
 
-Ce template crée une VM Ubuntu 24.04 LTS (Noble Numbat) optimisée pour Proxmox et cloud-init.
+This template creates an Ubuntu 24.04 LTS (Noble Numbat) VM optimized for Proxmox and cloud-init.
 
-### Fichiers
+### Files
 
 ```
 90001-pkr-ubuntu-noble-1/
-├── config.pkr.hcl       # Variables et configuration
-├── build.pkr.hcl        # Build specification et provisioning
+├── config.pkr.hcl       # Variables and configuration
+├── build.pkr.hcl        # Build specification and provisioning
 ├── files/
-│   └── 99-pve.cfg       # Configuration cloud-init pour Proxmox
+│   └── 99-pve.cfg       # Cloud-init configuration for Proxmox
 └── http/
-    ├── user-data        # Configuration autoinstall Ubuntu
-    └── meta-data        # Métadonnées (vide)
+    ├── user-data        # Ubuntu autoinstall configuration
+    └── meta-data        # Metadata (empty)
 ```
 
 ## Configuration (config.pkr.hcl)
 
-### Plugin Proxmox
+### Proxmox Plugin
 
 ```hcl
 packer {
@@ -44,45 +44,47 @@ packer {
 
 ### Variables
 
-| Variable | Type | Description | Sensible |
+| Variable | Type | Description | Sensitive |
 |----------|------|-------------|----------|
-| `proxmox_api_url` | string | URL de l'API Proxmox | Non |
-| `proxmox_api_token_id` | string | ID du token API | Non |
-| `proxmox_api_token_secret` | string | Secret du token | Oui |
-| `ssh_username` | string | Utilisateur SSH (odin) | Non |
-| `ssh_password` | string | Mot de passe temporaire | Oui |
-| `public_key` | string | Clé SSH publique | Oui |
+| `proxmox_api_url` | string | Proxmox API URL | No |
+| `proxmox_api_token_id` | string | API token ID | No |
+| `proxmox_api_token_secret` | string | Token secret | Yes |
+| `ssh_username` | string | SSH username (odin) | No |
+| `ssh_password` | string | Temporary password | Yes |
+| `public_key` | string | SSH public key (supports YubiKey) | Yes |
 
-## Build specification (build.pkr.hcl)
+> 💡 **YubiKey Support**: The `public_key` can be your YubiKey's SSH public key. See the [Getting Started Guide](../GETTING-STARTED.md#yubikey-ssh-setup) for YubiKey configuration.
+
+## Build Specification (build.pkr.hcl)
 
 ### Source proxmox-iso
 
-Configuration de la VM template :
+VM template configuration:
 
 #### Proxmox
-- **Node** : `asgard`
-- **VMID** : `90001`
-- **Nom** : `pkr-ubuntu-noble-1`
-- **Description** : "Ubuntu 24.04 LTS"
+- **Node**: `asgard`
+- **VMID**: `90001`
+- **Name**: `pkr-ubuntu-noble-1`
+- **Description**: "Ubuntu 24.04 LTS"
 
 #### ISO
-- **Source** : `local:iso/ubuntu-24.04.3-live-server-amd64.iso`
-- **Type** : SCSI
-- **Storage** : local
+- **Source**: `local:iso/ubuntu-24.04.3-live-server-amd64.iso`
+- **Type**: SCSI
+- **Storage**: local
 
-#### Matériel
-- **CPU** : 1 core, 1 socket
-- **RAM** : 2048 MB
-- **Disque** : 20 GB (raw format sur local-zfs)
-- **Network** : VirtIO sur vmbr0
-- **SCSI Controller** : virtio-scsi-pci
-- **VGA** : VirtIO
-- **QEMU Agent** : Activé
-- **Cloud-init** : Activé (storage: local-zfs)
+#### Hardware
+- **CPU**: 1 core, 1 socket
+- **RAM**: 2048 MB
+- **Disk**: 20 GB (raw format on local-zfs)
+- **Network**: VirtIO on vmbr0
+- **SCSI Controller**: virtio-scsi-pci
+- **VGA**: VirtIO
+- **QEMU Agent**: Enabled
+- **Cloud-init**: Enabled (storage: local-zfs)
 
 #### Boot
 
-**Boot command** pour Ubuntu autoinstall :
+**Boot command** for Ubuntu autoinstall:
 ```
 <esc><wait>
 e<wait>
@@ -92,70 +94,70 @@ autoinstall ds=nocloud-net\;s=http://{{ .HTTPIP }}:{{ .HTTPPort }}/ ---<wait>
 <f10><wait>
 ```
 
-- **Boot wait** : 6 secondes
-- **HTTP directory** : `http/` (sert user-data et meta-data)
+- **Boot wait**: 6 seconds
+- **HTTP directory**: `http/` (serves user-data and meta-data)
 
 #### SSH
-- **Communicator** : SSH
-- **Username** : valeur de `var.ssh_username`
-- **Password** : valeur de `var.ssh_password`
-- **Timeout** : 30 minutes
-- **PTY** : Activé
-- **Handshake attempts** : 15
+- **Communicator**: SSH
+- **Username**: value of `var.ssh_username`
+- **Password**: value of `var.ssh_password`
+- **Timeout**: 30 minutes
+- **PTY**: Enabled
+- **Handshake attempts**: 15
 
 ### Provisioning
 
-Le build exécute plusieurs étapes de provisioning :
+The build executes several provisioning steps:
 
-#### 1. Nettoyage cloud-init
+#### 1. Cloud-init Cleanup
 
 ```bash
-# Attendre la fin de cloud-init
+# Wait for cloud-init to finish
 while [ ! -f /var/lib/cloud/instance/boot-finished ]; do 
     echo 'Waiting for cloud-init...'; 
     sleep 1; 
 done
 
-# Supprimer les host keys SSH (seront régénérés)
+# Remove SSH host keys (will be regenerated)
 sudo rm /etc/ssh/ssh_host_*
 
-# Réinitialiser machine-id
+# Reset machine-id
 sudo truncate -s 0 /etc/machine-id
 
-# Nettoyage APT
+# APT cleanup
 sudo apt -y autoremove --purge
 sudo apt -y clean
 sudo apt -y autoclean
 
-# Réinitialiser cloud-init
+# Reset cloud-init
 sudo cloud-init clean
 
-# Supprimer la config réseau de l'installeur
+# Remove installer network config
 sudo rm -f /etc/cloud/cloud.cfg.d/subiquity-disable-cloudinit-networking.cfg
 sudo rm -f /etc/netplan/00-installer-config.yaml
 
 sudo sync
 ```
 
-#### 2. Configuration cloud-init pour Proxmox
+#### 2. Cloud-init Configuration for Proxmox
 
-Copie le fichier `files/99-pve.cfg` vers `/etc/cloud/cloud.cfg.d/99-pve.cfg`.
+Copies the file `files/99-pve.cfg` to `/etc/cloud/cloud.cfg.d/99-pve.cfg`.
 
-**Contenu de 99-pve.cfg** :
+**Content of 99-pve.cfg**:
 ```yaml
 datasource_list: [ConfigDrive, NoCloud]
 ```
 
-Configure cloud-init pour utiliser les datasources Proxmox (ConfigDrive) et NoCloud.
+Configures cloud-init to use Proxmox datasources (ConfigDrive) and NoCloud.
 
-#### 3. Installation de la clé SSH et sécurisation
+#### 3. SSH Key Installation and Hardening
 
 ```bash
-# Installation de la clé SSH publique
+# Install SSH public key
 echo 'ssh-rsa AAAA...' > ~/.ssh/authorized_keys
 chmod 600 ~/.ssh/authorized_keys
 
-# Configuration SSH sécurisée
+# Secure SSH configuration
 sudo tee /etc/ssh/sshd_config.d/99-security.conf > /dev/null <<'EOF'
 Port 2222
 PasswordAuthentication no
@@ -167,76 +169,76 @@ UsePAM yes
 AuthenticationMethods publickey
 EOF
 
-# Test de la configuration
+# Test configuration
 sudo sshd -t
 ```
 
-**Sécurisation SSH** :
-- Port personnalisé : 2222
-- Authentification par clé uniquement
-- Pas de login root
-- Pas d'authentification par mot de passe
+**SSH Hardening**:
+- Custom port: 2222
+- Key-only authentication
+- No root login
+- No password authentication
 
 ## Autoinstall (http/user-data)
 
-Configuration Ubuntu autoinstall (cloud-config format) :
+Ubuntu autoinstall configuration (cloud-config format):
 
 ```yaml
 #cloud-config
 autoinstall:
   version: 1
-  locale: fr_FR
+  locale: en_US.UTF-8
   keyboard:
-    layout: fr
+    layout: us
   ssh:
     install-server: true
-    allow-pw: false          # Pas d'auth par mot de passe
-    disable_root: true       # Root désactivé
+    allow-pw: false          # No password authentication
+    disable_root: true       # Root disabled
   storage:
     layout:
       name: direct
     swap:
-      size: 0                # Pas de swap (recommandé pour K8s)
+      size: 0                # No swap (recommended for K8s)
   user-data:
-    package_upgrade: true    # Mise à jour des packages
-    timezone: Europe/Paris
-    ssh_pwauth: true         # Temporaire pour le build Packer
+    package_upgrade: true    # Update packages
+    timezone: UTC
+    ssh_pwauth: true         # Temporary for Packer build
     users:
       - name: odin
         groups: [adm, sudo]
         lock-passwd: false
         sudo: ALL=(ALL) NOPASSWD:ALL
         shell: /bin/bash
-        passwd: $6$...       # Hash du mot de passe
+        passwd: $6$...       # Password hash
   packages:
-    - qemu-guest-agent       # Agent QEMU pour Proxmox
+    - qemu-guest-agent       # QEMU Agent for Proxmox
     - sudo
     - vim
     - zip
     - unzip
 ```
 
-### Paramètres importants
+### Important Parameters
 
-- **Locale** : fr_FR (français)
-- **Clavier** : fr (AZERTY)
-- **Timezone** : Europe/Paris
-- **Swap** : 0 (désactivé, recommandé pour Kubernetes)
-- **Utilisateur** : odin avec sudo sans mot de passe
-- **Packages** : qemu-guest-agent + outils de base
+- **Locale**: en_US.UTF-8 (English)
+- **Keyboard**: us (QWERTY)
+- **Timezone**: UTC (configurable via cloud-init later)
+- **Swap**: 0 (disabled, recommended for Kubernetes)
+- **User**: odin with passwordless sudo
+- **Packages**: qemu-guest-agent + basic tools
 
-## Utilisation
+## Usage
 
-### Prérequis
+### Prerequisites
 
-1. **ISO Ubuntu** dans Proxmox :
+1. **Ubuntu ISO** in Proxmox:
    ```bash
-   # Sur le serveur Proxmox
+   # On Proxmox server
    cd /var/lib/vz/template/iso
    wget https://releases.ubuntu.com/24.04.3/ubuntu-24.04.3-live-server-amd64.iso
    ```
 
-2. **Packer installé** :
+2. **Packer installed**:
    ```bash
    # macOS
    brew install packer
@@ -247,7 +249,7 @@ autoinstall:
    sudo mv packer /usr/local/bin/
    ```
 
-### Créer le fichier credentials
+### Create Credentials File
 
 ```bash
 cd packer/90001-pkr-ubuntu-noble-1
@@ -262,120 +264,122 @@ public_key               = "ssh-rsa AAAAB3NzaC1yc2EA... user@host"
 EOF
 ```
 
-### Créer un token API Proxmox
+> 💡 **YubiKey Users**: For the `public_key`, use your YubiKey's SSH public key. Extract it with: `ssh-keygen -D /path/to/libykcs11.so -e`
+
+### Create Proxmox API Token
 
 ```bash
-# Sur le serveur Proxmox (ou via l'interface web)
+# On Proxmox server (or via web interface)
 pveum user add packer@pve
 pveum aclmod / -user packer@pve -role PVEVMAdmin
 pveum user token add packer@pve packer-token --privsep=0
 ```
 
-### Construire le template
+### Build the Template
 
 ```bash
 cd packer/90001-pkr-ubuntu-noble-1
 
-# Initialiser les plugins
+# Initialize plugins
 packer init .
 
-# Valider la configuration
+# Validate configuration
 packer validate -var-file="credentials.pkrvars.hcl" .
 
-# Construire le template
+# Build template
 packer build -var-file="credentials.pkrvars.hcl" .
 ```
 
-### Suivi du build
+### Build Monitoring
 
-Le build prend environ 10-15 minutes :
+The build takes about 10-15 minutes:
 
-1. **Création de la VM** (VMID 90001)
-2. **Boot sur l'ISO Ubuntu**
+1. **VM Creation** (VMID 90001)
+2. **Boot Ubuntu ISO**
 3. **Autoinstall** via cloud-init
-4. **Provisioning** (nettoyage, config SSH, etc.)
-5. **Conversion en template**
+4. **Provisioning** (cleanup, SSH config, etc.)
+5. **Convert to template**
 
-Surveillez :
-- Console Proxmox pour l'installation
-- Sortie Packer pour le provisioning
-- Logs dans `/tmp/packer-*` sur le serveur Proxmox
+Monitor:
+- Proxmox console for installation
+- Packer output for provisioning
+- Logs in `/tmp/packer-*` on Proxmox server
 
-### Vérification
+### Verification
 
-Après le build, dans Proxmox :
+After the build, in Proxmox:
 
-1. Template visible : `pkr-ubuntu-noble-1` (VMID 90001)
-2. Type : Template (non démarrable)
-3. Cloud-init configuré
-4. QEMU Agent détecté
+1. Template visible: `pkr-ubuntu-noble-1` (VMID 90001)
+2. Type: Template (not bootable)
+3. Cloud-init configured
+4. QEMU Agent detected
 
 ## Troubleshooting
 
-### Erreur de connexion SSH
+### SSH Connection Error
 
-- Vérifier que le mot de passe temporaire est correct
-- Augmenter `ssh_timeout` si nécessaire
-- Vérifier que l'autoinstall est terminé
+- Verify temporary password is correct
+- Increase `ssh_timeout` if necessary
+- Verify autoinstall is complete
 
-### Timeout pendant l'autoinstall
+### Autoinstall Timeout
 
-- Vérifier que l'ISO Ubuntu est bien présente
-- Vérifier la boot command
-- Vérifier que le serveur HTTP Packer est accessible
+- Verify Ubuntu ISO is present
+- Check boot command
+- Verify Packer HTTP server is accessible
 
-### Erreur API Proxmox
+### Proxmox API Error
 
-- Vérifier l'URL et le token
-- Vérifier les permissions du token
-- Vérifier le certificat SSL (insecure_skip_tls_verify)
+- Verify URL and token
+- Check token permissions
+- Verify SSL certificate (insecure_skip_tls_verify)
 
-### Cloud-init ne démarre pas
+### Cloud-init Won't Start
 
-- Vérifier que le package cloud-init est installé
-- Vérifier les datasources dans 99-pve.cfg
-- Vérifier les logs : `sudo cloud-init status --long`
+- Verify cloud-init package is installed
+- Check datasources in 99-pve.cfg
+- Check logs: `sudo cloud-init status --long`
 
 ## Modifications
 
-### Changer la configuration Ubuntu
+### Change Ubuntu Configuration
 
-Modifier `http/user-data` :
-- Locale et timezone
-- Packages à installer
-- Configuration utilisateur
-- Paramètres réseau
+Modify `http/user-data`:
+- Locale and timezone
+- Packages to install
+- User configuration
+- Network settings
 
-### Ajouter des provisioners
+### Add Provisioners
 
-Dans `build.pkr.hcl`, ajouter après les provisioners existants :
+In `build.pkr.hcl`, add after existing provisioners:
 
 ```hcl
 provisioner "shell" {
   inline = [
-    "# Vos commandes ici",
+    "# Your commands here",
   ]
 }
 ```
 
-### Créer un nouveau template
+### Create New Template
 
-1. Copier le dossier `90001-pkr-ubuntu-noble-1`
-2. Renommer (ex: `90002-pkr-debian-12`)
-3. Modifier config.pkr.hcl et build.pkr.hcl
-4. Adapter user-data pour la distribution
-5. Build avec Packer
+1. Copy the folder `90001-pkr-ubuntu-noble-1`
+2. Rename (e.g., `90002-pkr-debian-12`)
+3. Modify config.pkr.hcl and build.pkr.hcl
+4. Adapt user-data for the distribution
+5. Build with Packer
 
-## Bonnes pratiques
+## Best Practices
 
-1. **Versioning** : Inclure la version dans le nom (ex: ubuntu-24.04-v1)
-2. **Minimal** : Installer uniquement le nécessaire
-3. **Cloud-init** : Toujours utiliser cloud-init pour Proxmox
-4. **Sécurité** : Pas de credentials hardcodés
-5. **Nettoyage** : Toujours nettoyer les artefacts (logs, cache, etc.)
-6. **Testing** : Tester le template avant de l'utiliser en production
+1. **Versioning**: Include version in name (e.g., ubuntu-24.04-v1)
+2. **Minimal**: Install only what's necessary
+3. **Cloud-init**: Always use cloud-init for Proxmox
+4. **Security**: No hardcoded credentials
+5. **Cleanup**: Always clean artifacts (logs, cache, etc.)
+6. **Testing**: Test template before production use
 
-## Références
+## References
 
 - [Packer Proxmox Builder](https://www.packer.io/plugins/builders/proxmox)
 - [Ubuntu Autoinstall](https://ubuntu.com/server/docs/install/autoinstall)
