@@ -115,7 +115,61 @@ Generate a standard SSH key specifically for Ansible automation:
 ```bash
 # Generate a dedicated SSH key for Ansible
 ssh-keygen -t ed25519 -f ~/.ssh/ansible_rke2 -C "ansible-automation"
+```
 
+**For YubiKey Users:** If your current SSH access uses YubiKey, configure `~/.ssh/config` with host aliases to simplify the key copying process:
+
+```bash
+# Add host entries to ~/.ssh/config
+cat >> ~/.ssh/config << 'EOF'
+Host homelab-master-1
+    HostName 10.10.10.101
+    Port 2222
+    User odin
+    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so  # Linux
+    # PKCS11Provider /opt/homebrew/lib/libykcs11.dylib        # macOS
+
+Host homelab-master-2
+    HostName 10.10.10.102
+    Port 2222
+    User odin
+    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+
+Host homelab-master-3
+    HostName 10.10.10.103
+    Port 2222
+    User odin
+    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+
+Host homelab-worker-1
+    HostName 10.10.10.111
+    Port 2222
+    User odin
+    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+
+Host homelab-worker-2
+    HostName 10.10.10.112
+    Port 2222
+    User odin
+    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+
+Host homelab-worker-3
+    HostName 10.10.10.113
+    Port 2222
+    User odin
+    PKCS11Provider /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so
+EOF
+
+# Copy the Ansible SSH key to all nodes using YubiKey authentication
+# You'll only need to enter PIN and touch YubiKey once per host
+for host in homelab-master-{1..3} homelab-worker-{1..3}; do
+  ssh-copy-id -i ~/.ssh/ansible_rke2.pub $host
+done
+```
+
+**Without YubiKey:** Simply copy the key using IP addresses:
+
+```bash
 # Copy the public key to ALL nodes (masters + workers)
 for ip in 10.10.10.{101..103} 10.10.10.{111..113}; do
   ssh-copy-id -i ~/.ssh/ansible_rke2.pub -p 2222 odin@$ip
