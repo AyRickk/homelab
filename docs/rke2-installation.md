@@ -100,113 +100,99 @@ ssh -p 2222 odin@10.10.10.113 "echo 'Worker 3 OK'"
 
 > 💡 **Tip:** Configure `~/.ssh/config` for easier access (see [README](../README.md#connect-to-vms))
 
-### YubiKey and Ansible Compatibility
+### SSH Key Configuration for Ansible
 
-**Important Note for YubiKey Users:**
+**Important: Ansible Requires a Dedicated SSH Key**
 
-If you're using a YubiKey for SSH authentication (which requires PIN entry and physical touch), you have **two options** for running Ansible:
+Ansible needs to establish multiple SSH connections to all nodes simultaneously. **Even if you use YubiKey for manual SSH access**, you must create a separate SSH key for Ansible automation.
 
-#### Option 1: SSH Agent with YubiKey (Recommended)
+> 🔐 **Why?** YubiKey requires manual PIN entry and physical touch for each connection, which is incompatible with Ansible's automated workflow. The SSH agent approach doesn't work reliably with Ansible's parallel connections.
 
-Use `ssh-agent` to cache your YubiKey authentication for the duration of the Ansible playbook:
+#### Create Dedicated Ansible SSH Key (Required)
 
-```bash
-# Start ssh-agent and add your YubiKey
-eval $(ssh-agent)
-ssh-add -s /usr/lib/x86_64-linux-gnu/opensc-pkcs11.so  # Linux
-# OR on macOS:
-# ssh-add -s /opt/homebrew/lib/libykcs11.dylib
-
-# Enter PIN and touch YubiKey when prompted
-
-# Verify the key is added
-ssh-add -l
-
-# Now run Ansible (will use the cached authentication)
-ansible-playbook -i inventory.yml install-rke2.yml
-```
-
-**Pros:**
-- ✅ Maintains YubiKey security
-- ✅ No need for separate credentials
-- ✅ Works with existing setup
-
-**Cons:**
-- ⚠️ Requires manual PIN/touch once per session
-- ⚠️ Agent timeout may require re-authentication for long playbooks
-
-#### Option 2: Create a Dedicated Ansible SSH Key (Alternative)
-
-Generate a standard SSH key pair specifically for Ansible automation:
+Generate a standard SSH key specifically for Ansible automation:
 
 ```bash
-# Generate a dedicated SSH key for Ansible (no YubiKey)
+# Generate a dedicated SSH key for Ansible
 ssh-keygen -t ed25519 -f ~/.ssh/ansible_rke2 -C "ansible-automation"
 
-# Copy the public key to all nodes
+# Copy the public key to ALL nodes (masters + workers)
 for ip in 10.10.10.{101..103} 10.10.10.{111..113}; do
   ssh-copy-id -i ~/.ssh/ansible_rke2.pub -p 2222 odin@$ip
 done
-
-# Update inventory.yml to use this key
-# ansible_ssh_private_key_file: ~/.ssh/ansible_rke2
 ```
 
-Then update `ansible/inventory.yml`:
+The inventory is already configured to use this key (`~/.ssh/ansible_rke2`).
 
-```yaml
-all:
-  vars:
-    ansible_user: odin
-    ansible_port: 2222
-    ansible_ssh_private_key_file: ~/.ssh/ansible_rke2  # Use dedicated key
+#### Verify SSH Access
+
+Test that Ansible can connect to all nodes:
+
+```bash
+cd ansible
+
+# Test connectivity to all nodes
+ansible all -i inventory.yml -m ping
+
+# You should see SUCCESS for all 6 nodes
 ```
 
-**Pros:**
-- ✅ Fully automated (no manual intervention)
-- ✅ No timeout issues
-- ✅ Best for repeated deployments
+#### Security Considerations
 
-**Cons:**
-- ⚠️ Less secure than YubiKey (standard SSH key)
-- ⚠️ Requires managing an additional key
+**Two keys approach (recommended):**
+- **YubiKey**: Use for manual SSH access (maximum security)
+- **Dedicated key**: Use only for Ansible automation (convenience)
 
-#### Recommendation
+This way you maintain strong security for interactive access while enabling automated deployments.
 
-For **initial deployment**: Use **Option 2** (dedicated Ansible key) for smooth automation.
-
-For **production/security-critical**: Use **Option 1** (YubiKey with ssh-agent) and accept manual authentication.
-
-You can also use **both**: Keep YubiKey for manual SSH access and use a dedicated key only for Ansible automation.
+> 💡 **Tip:** You can restrict the dedicated Ansible key to only specific IP addresses or limit it to specific commands by configuring `authorized_keys` options on each node.
 
 ## Architecture
 
-After installation, you'll have:
+After installation, you'll have a **High Availability** RKE2 cluster with:
 
 ```
-RKE2 Cluster (High Availability)
-├── Control Plane (Masters)
-│   ├── valaskjalf-master-1 (10.10.10.101) - First server
-│   ├── valaskjalf-master-2 (10.10.10.102) - Additional server
-│   └── valaskjalf-master-3 (10.10.10.103) - Additional server
-│       ├── etcd cluster (distributed key-value store)
-│       ├── kube-apiserver (API endpoint)
-│       ├── kube-scheduler (pod scheduling)
-│       └── kube-controller-manager (cluster operations)
-└── Data Plane (Workers)
-    ├── valaskjalf-worker-1 (10.10.10.111) - Agent
-    ├── valaskjalf-worker-2 (10.10.10.112) - Agent
-    └── valaskjalf-worker-3 (10.10.10.113) - Agent
-        ├── kubelet (node agent)
-        ├── kube-proxy (network proxy)
-        └── Container runtime (containerd)
+RKE2 HA Cluster with KubeVIP
+├── Virtual IP (KubeVIP)
+│   └── 10.10.10.100 - Floating IP for API access
+│
+├── Control Plane (3 Masters - HA)
+│   ├── valaskjalf-master-1 (10.10.10.101)
+│   ├── valaskjalf-master-2 (10.10.10.102)
+│   └── valaskjalf-master-3 (10.10.10.103)
+│       ├── etcd cluster (distributed, quorum-based)
+│       ├── kube-apiserver (all respond via VIP)
+│       ├── kube-scheduler (leader election)
+│       ├── kube-controller-manager (leader election)
+│       └── KubeVIP (manages Virtual IP failover)
+│
+└── Data Plane (3 Workers)
+    ├── valaskjalf-worker-1 (10.10.10.111)
+    ├── valaskjalf-worker-2 (10.10.10.112)
+    └── valaskjalf-worker-3 (10.10.10.113)
+        ├── kubelet (connects to VIP:6443)
+        ├── Container runtime (containerd)
+        └── Application pods
 
 Network Layer (Cilium CNI)
-├── eBPF-based networking
+├── eBPF-based networking (kube-proxy replacement)
 ├── Network policies (L3/L4/L7)
-├── Service mesh (optional)
-└── Hubble observability (optional)
+├── Service mesh capabilities
+└── Hubble observability (network visualization)
+
+High Availability Features
+├── KubeVIP: Floating IP for API access (10.10.10.100)
+├── etcd: 3-node quorum (tolerates 1 failure)
+├── API Server: 3 instances (load-balanced via VIP)
+└── Control Plane: Survives loss of any single master
 ```
+
+**Key HA Concepts:**
+
+- **Virtual IP (VIP)**: `10.10.10.100` floats between masters. All clients (workers, kubectl) connect to this IP.
+- **Master Failure**: If one master fails, VIP automatically moves to another master. Cluster remains operational.
+- **etcd Quorum**: With 3 masters, cluster tolerates 1 master failure. Need 2/3 for quorum.
+- **No Single Point of Failure**: Every control plane component is redundant.
 
 ## Installation Steps
 
@@ -252,43 +238,65 @@ Create an inventory file that defines your cluster nodes:
 ```bash
 cat > inventory.yml << 'EOF'
 ---
+# Ansible Inventory for RKE2 Cluster
+# This inventory defines the structure of your Kubernetes cluster
+
 all:
   vars:
     # Common variables for all nodes
     ansible_user: odin
     ansible_port: 2222
-    ansible_ssh_private_key_file: ~/.ssh/id_rsa
-    # Disable host key checking for homelab (optional)
-    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    
+    # SSH Key Configuration
+    # Use the dedicated Ansible key created earlier
+    ansible_ssh_private_key_file: ~/.ssh/ansible_rke2
+    
+    # Disable host key checking for homelab (remove in production)
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
 
   children:
-    # RKE2 Server nodes (Control Plane)
-    rke2_servers:
+    # Master nodes (Control Plane)
+    # These nodes run the Kubernetes control plane components
+    masters:
       hosts:
         valaskjalf-master-1:
           ansible_host: 10.10.10.101
+          rke2_type: server  # IMPORTANT: Defines this as a master
         valaskjalf-master-2:
           ansible_host: 10.10.10.102
+          rke2_type: server
         valaskjalf-master-3:
           ansible_host: 10.10.10.103
+          rke2_type: server
 
-    # RKE2 Agent nodes (Workers)
-    rke2_agents:
+    # Worker nodes
+    # These nodes run application workloads
+    workers:
       hosts:
         valaskjalf-worker-1:
           ansible_host: 10.10.10.111
+          rke2_type: agent  # IMPORTANT: Defines this as a worker
         valaskjalf-worker-2:
           ansible_host: 10.10.10.112
+          rke2_type: agent
         valaskjalf-worker-3:
           ansible_host: 10.10.10.113
+          rke2_type: agent
 
     # Group all RKE2 nodes together
-    rke2_cluster:
+    k8s_cluster:
       children:
-        rke2_servers:
-        rke2_agents:
+        masters:
+        workers:
 EOF
 ```
+
+**Important Notes:**
+
+- `rke2_type: server` - Marks a node as a master (control plane)
+- `rke2_type: agent` - Marks a node as a worker
+- `ansible_ssh_private_key_file` - Points to your dedicated Ansible key
+- Group names changed from `rke2_servers/rke2_agents` to `masters/workers` for clarity
 
 #### Verify Inventory
 
@@ -308,111 +316,184 @@ If you encounter issues, verify:
 
 ### 3. Role Configuration
 
-Create the main playbook and configure RKE2 with Cilium:
+Create the main playbook and configure RKE2 with Cilium and KubeVIP for High Availability:
 
 ```bash
 cat > install-rke2.yml << 'EOF'
 ---
-- name: Install RKE2 with Cilium CNI
-  hosts: rke2_cluster
+# RKE2 Installation Playbook with Cilium CNI and KubeVIP
+# This playbook installs and configures a production-ready RKE2 HA cluster
+
+- name: Install RKE2 HA Cluster with Cilium CNI and KubeVIP
+  hosts: k8s_cluster
   become: yes
   vars:
-    # RKE2 version to install
-    rke2_version: v1.28.5+rke2r1  # Use latest stable RKE2 version
+    # ===========================================
+    # RKE2 Version Configuration
+    # ===========================================
+    rke2_version: v1.34.1+rke2r1  # Latest stable version
     
-    # Disable default Canal CNI (we'll use Cilium instead)
+    # ===========================================
+    # CNI Configuration
+    # ===========================================
     rke2_cni: cilium
     
-    # RKE2 server (control plane) configuration
+    # ===========================================
+    # High Availability Configuration with KubeVIP
+    # ===========================================
+    rke2_ha_mode: true
+    rke2_ha_mode_keepalived: false  # Disable Keepalived
+    rke2_ha_mode_kubevip: true      # Enable KubeVIP
+    
+    # Virtual IP address for the cluster API
+    # IMPORTANT: Must be an unused IP on your network
+    rke2_api_ip: 10.10.10.100
+    
+    # KubeVIP as Cloud Provider for LoadBalancer services
+    rke2_kubevip_cloud_provider_enable: true
+    rke2_kubevip_svc_enable: true
+    
+    # IP range for LoadBalancer services (optional)
+    rke2_loadbalancer_ip_range:
+      range-global: 192.168.1.50-192.168.1.100
+    
+    # KubeVIP image version
+    rke2_kubevip_image: ghcr.io/kube-vip/kube-vip:v1.0.1
+    
+    # Download kubeconfig to local machine
+    rke2_download_kubeconf: true
+    rke2_download_kubeconf_path: /tmp
+    rke2_download_kubeconf_file_name: rke2-valaskjalf.yaml
+    
+    # ===========================================
+    # RKE2 Server (Control Plane) Configuration
+    # ===========================================
     rke2_server_config:
-      # Cluster settings
-      cluster-cidr: "10.42.0.0/16"      # Pod network CIDR
-      service-cidr: "10.43.0.0/16"      # Service network CIDR
-      cluster-dns: "10.43.0.10"         # CoreDNS service IP
+      # Network Configuration
+      cluster-cidr: "10.42.0.0/16"
+      service-cidr: "10.43.0.0/16"
+      cluster-dns: "10.43.0.10"
       
-      # Disable built-in CNI components
+      # Disabled Components
       disable:
         - rke2-canal
-        - rke2-ingress-nginx  # We'll install our own ingress later
+        - rke2-ingress-nginx
       
-      # TLS SAN for API server (add your domain/IP)
+      # TLS Configuration - IMPORTANT: Include VIP
       tls-san:
-        - 10.10.10.101  # First master IP
-        - 10.10.10.102  # Second master IP  
-        - 10.10.10.103  # Third master IP
-        - valaskjalf.local  # Optional: cluster domain name
+        - 10.10.10.100  # Virtual IP (VIP)
+        - 10.10.10.101  # Master 1
+        - 10.10.10.102  # Master 2
+        - 10.10.10.103  # Master 3
+        - yggdrasil.dev # Optional domain
       
-      # etcd configuration for HA
-      etcd-expose-metrics: false
+      # etcd Configuration
+      etcd-expose-metrics: true
       
-      # Security settings
+      # Security Configuration
       secrets-encryption: true
       
-      # Kube API server settings
+      # Kube API Server Arguments
       kube-apiserver-arg:
         - "anonymous-auth=false"
         - "audit-log-maxage=30"
+        - "audit-log-maxbackup=10"
+        - "audit-log-maxsize=100"
       
-      # Write kubeconfig with external IP
+      # Kubeconfig Configuration
       write-kubeconfig-mode: "0644"
+      
+      # Taint masters (best practice for production)
+      node-taint:
+        - "node-role.kubernetes.io/control-plane=true:NoSchedule"
     
-    # RKE2 agent (worker) configuration  
+    # ===========================================
+    # RKE2 Agent (Worker) Configuration
+    # ===========================================
     rke2_agent_config:
+      # Workers connect to VIP, not specific master
+      server: "https://10.10.10.100:9345"
+      
+      # Labels for worker nodes
       node-label:
         - "node-type=worker"
-      
-    # Download configuration
-    rke2_download_dir: /usr/local/bin
     
-    # Service configuration
+    # ===========================================
+    # Installation Configuration
+    # ===========================================
+    rke2_download_dir: /usr/local/bin
     rke2_start_on_boot: true
+    rke2_data_path: /var/lib/rancher/rke2
     
   roles:
     - role: lablabs.rke2
-
+  
   tasks:
-    # Post-installation tasks
     - name: Wait for RKE2 server to be ready
       wait_for:
         port: 6443
+        host: 10.10.10.100  # Wait for VIP
         delay: 10
-        timeout: 300
-      when: inventory_hostname in groups['rke2_servers']
-      
+        timeout: 600        # KubeVIP takes longer to start
+      when: inventory_hostname in groups['masters']
+    
     - name: Create .kube directory for odin user
       file:
         path: /home/odin/.kube
         state: directory
         owner: odin
         group: odin
-        mode: '0755'
-      when: inventory_hostname == groups['rke2_servers'][0]
-      
+        mode: "0755"
+      when: inventory_hostname == groups['masters'][0]
+    
     - name: Copy kubeconfig to odin user
       copy:
         src: /etc/rancher/rke2/rke2.yaml
         dest: /home/odin/.kube/config
         owner: odin
         group: odin
-        mode: '0600'
+        mode: "0600"
         remote_src: yes
-      when: inventory_hostname == groups['rke2_servers'][0]
+      when: inventory_hostname == groups['masters'][0]
+    
+    - name: Replace localhost with VIP in kubeconfig
+      replace:
+        path: /home/odin/.kube/config
+        regexp: "https://127.0.0.1:6443"
+        replace: "https://10.10.10.100:6443"  # Use VIP
+      when: inventory_hostname == groups['masters'][0]
+    
+    - name: Create kubectl symlink
+      file:
+        src: /var/lib/rancher/rke2/bin/kubectl
+        dest: /usr/local/bin/kubectl
+        state: link
+      when: inventory_hostname == groups['masters'][0]
 
+# ===========================================
+# Cilium CNI Installation
+# ===========================================
 - name: Install Cilium CNI
-  hosts: rke2_servers[0]  # Run only on first master
+  hosts: masters[0]
   become: yes
+  vars:
+    cilium_version: "1.18.3"
+    cilium_cli_version: "v0.18.8"
+  
   tasks:
     - name: Wait for RKE2 to be fully ready
       wait_for:
         port: 6443
-        delay: 30
-        timeout: 300
-        
+        host: 10.10.10.100  # Wait for VIP
+        delay: 60
+        timeout: 600
+    
     - name: Download Cilium CLI
       get_url:
-        url: https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
+        url: "https://github.com/cilium/cilium-cli/releases/download/{{ cilium_cli_version }}/cilium-linux-amd64.tar.gz"
         dest: /tmp/cilium-cli.tar.gz
-        mode: '0644'
+        mode: "0644"
+        timeout: 300
     
     - name: Extract Cilium CLI
       unarchive:
@@ -420,18 +501,26 @@ cat > install-rke2.yml << 'EOF'
         dest: /usr/local/bin
         remote_src: yes
         creates: /usr/local/bin/cilium
-        
+    
     - name: Make Cilium CLI executable
       file:
         path: /usr/local/bin/cilium
-        mode: '0755'
+        mode: "0755"
     
-    - name: Install Cilium with recommended settings
+    - name: Check if Cilium is already installed
+      command: cilium status --wait=false
+      environment:
+        KUBECONFIG: /etc/rancher/rke2/rke2.yaml
+      register: cilium_check
+      failed_when: false
+      changed_when: false
+    
+    - name: Install Cilium with HA and KubeVIP-compatible settings
       command: >
         cilium install
-        --version 1.14.5
-        --set kubeProxyReplacement=strict
-        --set k8sServiceHost=10.10.10.101
+        --version {{ cilium_version }}
+        --set kubeProxyReplacement=true
+        --set k8sServiceHost=10.10.10.100
         --set k8sServicePort=6443
         --set operator.replicas=3
         --set ipam.mode=kubernetes
@@ -439,54 +528,76 @@ cat > install-rke2.yml << 'EOF'
         --set hubble.enabled=true
         --set hubble.relay.enabled=true
         --set hubble.ui.enabled=true
+        --set prometheus.enabled=true
+        --set operator.prometheus.enabled=true
       environment:
         KUBECONFIG: /etc/rancher/rke2/rke2.yaml
-      register: cilium_install
-      changed_when: "'✅ Cilium was successfully installed' in cilium_install.stdout"
-      
+      when: cilium_check.rc != 0
+    
     - name: Wait for Cilium to be ready
-      command: cilium status --wait
+      command: cilium status --wait --wait-duration=10m
       environment:
         KUBECONFIG: /etc/rancher/rke2/rke2.yaml
       register: cilium_status
-      retries: 30
-      delay: 10
+      retries: 5
+      delay: 30
       until: cilium_status.rc == 0
-      
-    - name: Display Cilium status
+    
+    - name: Display cluster information
       debug:
-        var: cilium_status.stdout_lines
+        msg:
+          - "=============================================="
+          - "🎉 RKE2 HA Cluster Ready!"
+          - "=============================================="
+          - "Virtual IP: 10.10.10.100"
+          - "Access: kubectl --server=https://10.10.10.100:6443"
+          - "=============================================="
 EOF
 ```
 
 #### Configuration Breakdown
 
-**Key Configuration Options:**
+**High Availability (KubeVIP):**
 
-1. **CNI Selection**: `rke2_cni: cilium` - Tells the role to prepare for Cilium
-2. **Network CIDRs**: 
-   - `cluster-cidr`: Pod IP range (10.42.0.0/16)
-   - `service-cidr`: Service IP range (10.43.0.0/16)
-3. **Disabled Components**: We disable Canal (default CNI) and built-in ingress
-4. **TLS SANs**: API server certificates include all master IPs
-5. **Security**: Enabled secrets encryption and anonymous auth disabled
+1. **Virtual IP (VIP)**: `10.10.10.100` - Floating IP for API access
+   - All clients connect to this IP
+   - Automatically fails over if a master goes down
+   - Must be an unused IP on your network
 
-**Cilium Configuration:**
+2. **HA Mode**: 
+   - `rke2_ha_mode: true` - Enables HA
+   - `rke2_ha_mode_kubevip: true` - Uses KubeVIP (not Keepalived)
+   - `rke2_api_ip` - The VIP address
 
-- `kubeProxyReplacement=strict`: Cilium replaces kube-proxy entirely
-- `operator.replicas=3`: HA configuration for Cilium operator
-- `tunnel=vxlan`: Overlay network mode (alternatives: geneve, disabled)
-- `hubble.enabled=true`: Enable observability features
+3. **TLS SANs**: Must include VIP + all master IPs
+
+**CNI Configuration:**
+
+- `rke2_cni: cilium` - Use Cilium instead of Canal
+- Cilium configured to use VIP (`k8sServiceHost: 10.10.10.100`)
+- eBPF-based networking with kube-proxy replacement
+- Hubble for observability
+
+**Worker Configuration:**
+
+- `server: "https://10.10.10.100:9345"` - Workers connect to VIP
+- This ensures workers stay connected even if a master fails
+
+**Node Taints:**
+
+- Masters are tainted with `NoSchedule`
+- Prevents user pods from running on control plane
+- Best practice for production
 
 ### 4. Deployment
 
-Now deploy RKE2 to your cluster:
+Deploy RKE2 to your cluster:
 
 ```bash
-# Run the playbook (this will take 10-15 minutes)
+# Run the playbook (this will take 15-20 minutes)
 ansible-playbook -i inventory.yml install-rke2.yml
 
-# If you want to see detailed output:
+# With verbose output to see progress:
 ansible-playbook -i inventory.yml install-rke2.yml -v
 ```
 
@@ -494,84 +605,92 @@ ansible-playbook -i inventory.yml install-rke2.yml -v
 
 1. **First Master** (valaskjalf-master-1):
    - Installs RKE2 server
-   - Initializes the cluster
-   - Creates etcd database
+   - Initializes etcd cluster
    - Starts control plane components
+   - Deploys KubeVIP (VIP: 10.10.10.100)
 
 2. **Additional Masters** (valaskjalf-master-2, 3):
-   - Join the cluster
-   - Join etcd cluster (HA)
+   - Join etcd cluster (quorum established with 3 nodes)
    - Start control plane components
+   - KubeVIP monitors VIP on all masters
 
 3. **Workers** (valaskjalf-worker-1, 2, 3):
    - Install RKE2 agent
-   - Join the cluster
+   - Connect to cluster via VIP (10.10.10.100)
    - Start kubelet and container runtime
 
 4. **Cilium CNI**:
    - Install Cilium CLI
-   - Deploy Cilium to cluster
+   - Deploy Cilium to cluster (configured for VIP)
    - Enable Hubble observability
+   - Wait for network to be ready
 
-**Expected Output:**
+**Testing High Availability:**
 
-```
-PLAY [Install RKE2 with Cilium CNI] *******************************************
+After deployment, you can test HA:
 
-TASK [Gathering Facts] ********************************************************
-ok: [valaskjalf-master-1]
-ok: [valaskjalf-master-2]
-...
+```bash
+# Check all nodes are ready
+kubectl get nodes -o wide
 
-PLAY RECAP ********************************************************************
-valaskjalf-master-1    : ok=25   changed=12   unreachable=0    failed=0
-valaskjalf-master-2    : ok=23   changed=10   unreachable=0    failed=0
-valaskjalf-master-3    : ok=23   changed=10   unreachable=0    failed=0
-valaskjalf-worker-1    : ok=20   changed=8    unreachable=0    failed=0
-valaskjalf-worker-2    : ok=20   changed=8    unreachable=0    failed=0
-valaskjalf-worker-3    : ok=20   changed=8    unreachable=0    failed=0
+# Test VIP failover:
+# 1. Shut down master-1
+# 2. Cluster should remain accessible via VIP
+# 3. VIP automatically moves to another master
 ```
 
 ### 5. Verification
 
-#### Access Cluster from First Master
+#### Access Cluster via Virtual IP
 
-SSH to the first master node:
+The cluster is now accessible via the Virtual IP (10.10.10.100). You can connect from any master node or your local machine.
+
+**From a Master Node:**
 
 ```bash
+# SSH to any master (they all have access)
 ssh -p 2222 odin@10.10.10.101
-```
 
-Verify RKE2 is running:
+# Set KUBECONFIG
+export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
 
-```bash
-# Check RKE2 service status
-sudo systemctl status rke2-server
-
-# View RKE2 logs
-sudo journalctl -u rke2-server -f
+# Or create symlink for kubectl
+sudo ln -sf /var/lib/rancher/rke2/bin/kubectl /usr/local/bin/kubectl
 ```
 
 #### Check Cluster Status
 
 ```bash
-# Set KUBECONFIG (on master node)
-export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
-
-# Or use kubectl directly
-sudo /var/lib/rancher/rke2/bin/kubectl --kubeconfig=/etc/rancher/rke2/rke2.yaml get nodes
-
-# Check nodes are Ready
-kubectl get nodes
+# Check all nodes
+kubectl get nodes -o wide
 
 # Expected output:
-# NAME                  STATUS   ROLES                       AGE     VERSION
-# valaskjalf-master-1   Ready    control-plane,etcd,master   5m      v1.28.5+rke2r1
-# valaskjalf-master-2   Ready    control-plane,etcd,master   4m      v1.28.5+rke2r1
-# valaskjalf-master-3   Ready    control-plane,etcd,master   4m      v1.28.5+rke2r1
-# valaskjalf-worker-1   Ready    <none>                      3m      v1.28.5+rke2r1
-# valaskjalf-worker-2   Ready    <none>                      3m      v1.28.5+rke2r1
-# valaskjalf-worker-3   Ready    <none>                      3m      v1.28.5+rke2r1
+# NAME                  STATUS   ROLES                       AGE   VERSION
+# valaskjalf-master-1   Ready    control-plane,etcd,master   5m    v1.34.1+rke2r1
+# valaskjalf-master-2   Ready    control-plane,etcd,master   4m    v1.34.1+rke2r1
+# valaskjalf-master-3   Ready    control-plane,etcd,master   4m    v1.34.1+rke2r1
+# valaskjalf-worker-1   Ready    <none>                      3m    v1.34.1+rke2r1
+# valaskjalf-worker-2   Ready    <none>                      3m    v1.34.1+rke2r1
+# valaskjalf-worker-3   Ready    <none>                      3m    v1.34.1+rke2r1
+
+# Verify masters have the control-plane taint
+kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints
+
+# Check all system pods
+kubectl get pods -A
+```
+
+#### Verify KubeVIP
+
+```bash
+# Check KubeVIP is running on all masters
+kubectl get pods -n kube-system -l app.kubernetes.io/name=kube-vip
+
+# Verify the VIP is active
+ping -c 3 10.10.10.100
+
+# Check which master currently holds the VIP
+ip addr show | grep 10.10.10.100  # Run on each master
 ```
 
 #### Verify Cilium
@@ -584,51 +703,62 @@ sudo cilium status
 #     /¯¯\
 #  /¯¯\__/¯¯\    Cilium:             OK
 #  \__/¯¯\__/    Operator:           OK
-#  /¯¯\__/¯¯\    Envoy DaemonSet:    disabled (using embedded mode)
-#  \__/¯¯\__/    Hubble Relay:       OK
-#     \__/       ClusterMesh:        disabled
+#  /¯¯\__/¯¯\    Hubble Relay:       OK
+#  \__/¯¯\__/    ClusterMesh:        disabled
+#     \__/
 
-# Check Cilium pods
+# Check Cilium pods (should have 1 per node)
 kubectl get pods -n kube-system -l app.kubernetes.io/name=cilium
 
-# Expected output:
-# NAME           READY   STATUS    RESTARTS   AGE
-# cilium-xxxxx   1/1     Running   0          5m
-# cilium-yyyyy   1/1     Running   0          5m
-# cilium-zzzzz   1/1     Running   0          5m
-# ...
+# Expected: 6 Cilium pods (1 per node)
+
+# Verify Cilium is using VIP for API access
+kubectl get -n kube-system configmap cilium-config -o yaml | grep k8sServiceHost
+# Should show: k8sServiceHost: "10.10.10.100"
 
 # Run Cilium connectivity test (optional, takes 5-10 minutes)
 sudo cilium connectivity test
 ```
 
-#### Verify All System Pods
-
-```bash
-kubectl get pods -A
-
-# You should see pods in:
-# - kube-system (Cilium, CoreDNS, metrics-server)
-# All pods should be Running or Completed
-```
-
 #### Access Cluster from Local Machine
 
-Copy kubeconfig from master to your local machine:
+The playbook automatically downloaded a kubeconfig file to `/tmp/rke2-valaskjalf.yaml` on your local machine. Use this to access the cluster:
 
 ```bash
-# On your local machine
-scp -P 2222 odin@10.10.10.101:/home/odin/.kube/config ~/.kube/config-homelab
+# Copy the downloaded kubeconfig to your kubectl config location
+cp /tmp/rke2-valaskjalf.yaml ~/.kube/config-valaskjalf
 
-# Or merge with existing config
-export KUBECONFIG=~/.kube/config:~/.kube/config-homelab
+# Or manually copy from first master
+scp -P 2222 odin@10.10.10.101:/home/odin/.kube/config ~/.kube/config-valaskjalf
+
+# Verify the server URL uses the VIP
+grep server ~/.kube/config-valaskjalf
+# Should show: server: https://10.10.10.100:6443
+
+# Set KUBECONFIG to use this cluster
+export KUBECONFIG=~/.kube/config-valaskjalf
+
+# Or merge with your existing kubeconfig
+export KUBECONFIG=~/.kube/config:~/.kube/config-valaskjalf
 kubectl config get-contexts
 
-# Switch to homelab cluster
+# Switch to the cluster
 kubectl config use-context default
 
-# Test access
+# Test access via VIP
+kubectl get nodes -o wide
+```
+
+**Testing HA from Local Machine:**
+
+Your local kubectl is configured to use the VIP (10.10.10.100), so:
+
+```bash
+# This command uses the VIP
 kubectl get nodes
+
+# Even if master-1 goes down, this continues to work
+# because the VIP fails over to another master automatically
 ```
 
 > 🔒 **Security Note**: The kubeconfig contains admin credentials. Keep it secure!
@@ -637,7 +767,7 @@ kubectl get nodes
 
 ### Enable Hubble UI (Observability)
 
-Hubble provides deep network visibility. Access the UI:
+Hubble is already enabled. Access the UI:
 
 ```bash
 # On first master

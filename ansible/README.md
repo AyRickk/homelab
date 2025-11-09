@@ -1,16 +1,30 @@
 # Ansible Configuration for RKE2
 
-This directory contains Ansible automation for deploying RKE2 with Cilium CNI to your homelab cluster.
+This directory contains Ansible automation for deploying a High Availability RKE2 cluster with Cilium CNI and KubeVIP to your homelab.
 
 ## 📋 Files
 
-- **`requirements.yml`** - Ansible Galaxy dependencies (lablabs/ansible-role-rke2)
-- **`inventory.yml`** - Cluster node inventory (masters and workers)
-- **`install-rke2.yml`** - Main playbook for RKE2 + Cilium installation
+- **`requirements.yml`** - Ansible Galaxy dependencies (lablabs/ansible-role-rke2 v1.49.0)
+- **`inventory.yml`** - Cluster node inventory (3 masters + 3 workers)
+- **`install-rke2.yml`** - Main playbook for RKE2 + Cilium + KubeVIP installation
 
 ## 🚀 Quick Start
 
-### 1. Install Ansible
+### 1. Create Dedicated SSH Key for Ansible
+
+**Important:** Even if you use YubiKey for manual SSH, you need a dedicated key for Ansible automation.
+
+```bash
+# Generate dedicated Ansible SSH key
+ssh-keygen -t ed25519 -f ~/.ssh/ansible_rke2 -C "ansible-automation"
+
+# Copy to all nodes
+for ip in 10.10.10.{101..103} 10.10.10.{111..113}; do
+  ssh-copy-id -i ~/.ssh/ansible_rke2.pub -p 2222 odin@$ip
+done
+```
+
+### 2. Install Ansible
 
 ```bash
 # Ubuntu/Debian
@@ -20,26 +34,26 @@ sudo apt update && sudo apt install -y ansible
 pip3 install ansible
 ```
 
-### 2. Install Required Roles
+### 3. Install Required Roles
 
 ```bash
 cd ansible
 ansible-galaxy install -r requirements.yml
 ```
 
-### 3. Verify Connectivity
+### 4. Verify Connectivity
 
 ```bash
 # Test SSH access to all nodes
 ansible all -i inventory.yml -m ping
+
+# You should see SUCCESS for all 6 nodes
 ```
 
-**Note for YubiKey Users:** If you use YubiKey for SSH authentication, see the [YubiKey and Ansible Compatibility](../docs/rke2-installation.md#yubikey-and-ansible-compatibility) section in the full documentation for two approaches to handle PIN/touch requirements during Ansible automation.
-
-### 4. Deploy RKE2
+### 5. Deploy RKE2 HA Cluster
 
 ```bash
-# Run the playbook
+# Run the playbook (takes 15-20 minutes)
 ansible-playbook -i inventory.yml install-rke2.yml
 
 # With verbose output
@@ -52,38 +66,73 @@ For complete setup instructions, configuration options, and troubleshooting:
 
 👉 **[docs/rke2-installation.md](../docs/rke2-installation.md)**
 
+## ⚙️ Key Features
+
+### High Availability with KubeVIP
+
+- **Virtual IP (VIP)**: 10.10.10.100 - Floating IP for API access
+- **3 Master Nodes**: Quorum-based etcd cluster
+- **Automatic Failover**: VIP moves to healthy master if one fails
+- **Zero Downtime**: Cluster survives loss of any single master
+
+### Advanced Networking with Cilium
+
+- **eBPF-based**: High-performance networking
+- **kube-proxy Replacement**: Cilium handles all networking
+- **Hubble Observability**: Network visualization and monitoring
+- **3 Operator Replicas**: HA Cilium operator
+
+### Production-Ready Configuration
+
+- **Master Taints**: Prevents user pods on control plane
+- **etcd Metrics**: Enabled for monitoring
+- **Secrets Encryption**: At-rest encryption enabled
+- **Security Hardening**: Anonymous auth disabled, audit logs enabled
+
 ## ⚙️ Customization
+
+### Change Virtual IP (VIP)
+
+Edit `install-rke2.yml`:
+
+```yaml
+rke2_api_ip: 10.10.10.100  # Change to an unused IP on your network
+```
+
+Also update in `tls-san` and `server` sections.
 
 ### Change Network Configuration
 
 Edit `inventory.yml` to match your network:
 
 ```yaml
-rke2_servers:
+masters:
   hosts:
     valaskjalf-master-1:
       ansible_host: YOUR_IP_HERE  # Change to your IP
+      rke2_type: server
 ```
 
 ### Modify RKE2 Configuration
 
 Edit `install-rke2.yml` to customize:
 
-- RKE2 version
+- RKE2 version (`rke2_version`)
+- Cilium version (`cilium_version`)
 - Network CIDRs (pod/service networks)
-- Cilium features (Hubble, monitoring, etc.)
+- LoadBalancer IP range
 - Security settings
-- Resource allocations
 
 ### Add More Nodes
 
 Add nodes to `inventory.yml`:
 
 ```yaml
-rke2_agents:
+workers:
   hosts:
     valaskjalf-worker-4:
       ansible_host: 10.10.10.114
+      rke2_type: agent
 ```
 
 Then re-run the playbook.
@@ -93,46 +142,80 @@ Then re-run the playbook.
 After deployment, verify your cluster:
 
 ```bash
-# SSH to first master
+# SSH to any master
 ssh -p 2222 odin@10.10.10.101
 
-# Check cluster status
+# Check cluster status (via VIP)
 export KUBECONFIG=/etc/rancher/rke2/rke2.yaml
-kubectl get nodes
+kubectl get nodes -o wide
+
+# Check KubeVIP
+kubectl get pods -n kube-system -l app.kubernetes.io/name=kube-vip
 
 # Check Cilium status
 sudo cilium status
 
-# Run connectivity test
-sudo cilium connectivity test
+# Test VIP failover
+ping 10.10.10.100  # Should always respond
+# Shutdown master-1, VIP should move to another master
 ```
 
 ## 🛠️ Troubleshooting
 
-### Common Issues
+### SSH Key Issues
 
-**Ansible connection fails:**
 ```bash
-# Test SSH manually
-ssh -p 2222 odin@10.10.10.101
+# Verify dedicated Ansible key exists
+ls -la ~/.ssh/ansible_rke2*
 
-# Check SSH keys
-ls -la ~/.ssh/id_rsa*
+# Test manual SSH with the key
+ssh -i ~/.ssh/ansible_rke2 -p 2222 odin@10.10.10.101
+
+# Re-copy key if needed
+ssh-copy-id -i ~/.ssh/ansible_rke2.pub -p 2222 odin@10.10.10.101
 ```
 
-**RKE2 installation fails:**
+### Ansible Connection Fails
+
+```bash
+# Test connectivity
+ansible all -i inventory.yml -m ping
+
+# Check inventory file has correct SSH key path
+grep ansible_ssh_private_key_file inventory.yml
+```
+
+### RKE2 Installation Fails
+
 ```bash
 # Check logs on affected node
-sudo journalctl -u rke2-server -f  # or rke2-agent
+sudo journalctl -u rke2-server -f  # or rke2-agent on workers
 ```
 
-**Cilium not working:**
+### KubeVIP Not Working
+
 ```bash
-# Check Cilium pods
+# Check VIP is assigned
+ip addr show | grep 10.10.10.100  # Run on each master
+
+# Check KubeVIP pods
+kubectl get pods -n kube-system -l app.kubernetes.io/name=kube-vip
+
+# View KubeVIP logs
+kubectl logs -n kube-system -l app.kubernetes.io/name=kube-vip
+```
+
+### Cilium Not Working
+
+```bash
+# Check Cilium pods (should be 6 total)
 kubectl get pods -n kube-system -l app.kubernetes.io/name=cilium
 
 # View Cilium logs
 kubectl logs -n kube-system -l app.kubernetes.io/name=cilium --tail=50
+
+# Verify Cilium is using VIP
+kubectl get -n kube-system configmap cilium-config -o yaml | grep k8sServiceHost
 ```
 
 See [full troubleshooting guide](../docs/rke2-installation.md#troubleshooting) for more solutions.
@@ -141,6 +224,7 @@ See [full troubleshooting guide](../docs/rke2-installation.md#troubleshooting) f
 
 - [RKE2 Documentation](https://docs.rke2.io/)
 - [Cilium Documentation](https://docs.cilium.io/)
+- [KubeVIP Documentation](https://kube-vip.io/)
 - [ansible-role-rke2 GitHub](https://github.com/lablabs/ansible-role-rke2)
 - [Ansible Documentation](https://docs.ansible.com/)
 
@@ -152,5 +236,5 @@ Found an issue or have an improvement? Open an issue or PR!
 
 **Next Steps**: After installation, check out:
 - [Deploying applications](../docs/rke2-installation.md#next-steps)
-- [Setting up monitoring](../docs/rke2-installation.md#2-deploy-monitoring)
+- [Setting up monitoring](../docs/rke2-installation.md#4-deploy-monitoring)
 - [Configuring storage](../docs/rke2-installation.md#3-setup-storage)
