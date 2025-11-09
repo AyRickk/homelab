@@ -118,6 +118,11 @@ packer build -var-file="credentials.pkrvars.hcl" .
 cd ../../terraform
 terraform init
 terraform apply -var-file="credentials.tfvars"
+
+# 5. Deploy RKE2 Kubernetes cluster (optional)
+cd ../ansible
+ansible-galaxy install -r requirements.yml
+ansible-playbook -i inventory.yml install-rke2.yml
 ```
 
 **⚠️ First time?** Check the [detailed Getting Started guide](./GETTING-STARTED.md) for a complete walkthrough!
@@ -309,7 +314,8 @@ homelab/
 │   ├── infrastructure.md               # Architecture deep-dive
 │   ├── packer.md                       # Packer template details
 │   ├── terraform.md                    # Terraform configuration guide
-│   └── network.md                      # Network configuration
+│   ├── rke2-installation.md            # RKE2 + Cilium installation guide
+│   └── gpu-passthrough.md              # GPU passthrough configuration
 ├── packer/                             # VM template creation
 │   └── 90001-pkr-ubuntu-noble-1/
 │       ├── credentials.pkrvars.hcl.example  # 👈 Copy and customize
@@ -320,15 +326,19 @@ homelab/
 │       └── http/
 │           ├── user-data               # Ubuntu autoinstall
 │           └── meta-data
-└── terraform/                          # Infrastructure deployment
-    ├── credentials.tfvars.example      # 👈 Copy and customize
-    ├── provider.tf                     # Proxmox provider config
-    ├── valaskjalf-master-1.tf          # Master node 1
-    ├── valaskjalf-master-2.tf          # Master node 2
-    ├── valaskjalf-master-3.tf          # Master node 3
-    ├── valaskjalf-worker-1.tf          # Worker node 1
-    ├── valaskjalf-worker-2.tf          # Worker node 2
-    └── valaskjalf-worker-3.tf          # Worker node 3
+├── terraform/                          # Infrastructure deployment
+│   ├── credentials.tfvars.example      # 👈 Copy and customize
+│   ├── provider.tf                     # Proxmox provider config
+│   ├── valaskjalf-master-1.tf          # Master node 1
+│   ├── valaskjalf-master-2.tf          # Master node 2
+│   ├── valaskjalf-master-3.tf          # Master node 3
+│   ├── valaskjalf-worker-1.tf          # Worker node 1
+│   ├── valaskjalf-worker-2.tf          # Worker node 2
+│   └── valaskjalf-worker-3.tf          # Worker node 3
+└── ansible/                            # Kubernetes deployment automation
+    ├── requirements.yml                # Ansible Galaxy dependencies
+    ├── inventory.yml                   # Cluster node inventory
+    └── install-rke2.yml                # RKE2 + Cilium playbook
 ```
 
 ## 🔧 Usage
@@ -414,6 +424,7 @@ Comprehensive guides are available in the [`docs/`](./docs) directory:
 | [**Infrastructure**](./docs/infrastructure.md) | Architecture deep-dive, components, HA setup, hardware specs |
 | [**Packer**](./docs/packer.md) | VM template creation, customization, troubleshooting |
 | [**Terraform**](./docs/terraform.md) | Infrastructure deployment, state management, workflows |
+| [**RKE2 Installation**](./docs/rke2-installation.md) | Complete guide for installing RKE2 with Cilium CNI using Ansible |
 | [**GPU Passthrough**](./docs/gpu-passthrough.md) | NVIDIA RTX 2080 PCIe passthrough configuration |
 | [**Documentation Roadmap**](./docs/ROADMAP.md) | Planned documentation and future topics |
 
@@ -421,7 +432,7 @@ Comprehensive guides are available in the [`docs/`](./docs) directory:
 
 As this homelab evolves, the following guides will be added:
 
-- 🔜 **RKE2 Deployment** - Step-by-step Kubernetes cluster setup
+- ✅ **RKE2 Deployment** - Step-by-step Kubernetes cluster setup with Cilium CNI
 - 🔜 **Monitoring Stack** - Prometheus, Grafana, and alerting
 - 🔜 **Storage Solutions** - Longhorn, NFS, and persistent volumes
 - 🔜 **GitOps with ArgoCD** - Automated deployments

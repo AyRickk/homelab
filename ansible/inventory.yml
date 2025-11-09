@@ -1,0 +1,63 @@
+---
+# Ansible Inventory for RKE2 Cluster
+# This inventory defines the structure of your Kubernetes cluster
+
+all:
+  vars:
+    # Common variables for all nodes
+    ansible_user: odin
+    ansible_port: 2222
+
+    # SSH Key Configuration
+    # Default: Uses ~/.ssh/id_rsa
+    ansible_ssh_private_key_file: ~/.ssh/ansible_rke2
+
+    # YubiKey Users: See docs/rke2-installation.md for YubiKey + Ansible options
+    # Create dedicated Ansible key (recommended for automation)
+    #   Generate: ssh-keygen -t ed25519 -f ~/.ssh/ansible_rke2
+    #   Then set: ansible_ssh_private_key_file: ~/.ssh/ansible_rke2
+
+    # Disable host key checking for homelab (remove in production)
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+
+  children:
+    # RKE2 Server nodes (Control Plane / Masters)
+    # These nodes run the Kubernetes control plane components:
+    # - etcd (distributed key-value store)
+    # - kube-apiserver (API endpoint)
+    # - kube-scheduler (pod scheduling)
+    # - kube-controller-manager (cluster operations)
+    masters:
+      hosts:
+        valaskjalf-master-1:
+          ansible_host: 10.10.10.101
+          rke2_type: server
+        valaskjalf-master-2:
+          ansible_host: 10.10.10.102
+          rke2_type: server
+        valaskjalf-master-3:
+          ansible_host: 10.10.10.103
+          rke2_type: server
+
+    # RKE2 Agent nodes (Workers)
+    # These nodes run application workloads:
+    # - kubelet (node agent)
+    # - kube-proxy (network proxy)
+    # - Container runtime (containerd)
+    workers:
+      hosts:
+        valaskjalf-worker-1:
+          ansible_host: 10.10.10.111
+          rke2_type: agent
+        valaskjalf-worker-2:
+          ansible_host: 10.10.10.112
+          rke2_type: agent
+        valaskjalf-worker-3:
+          ansible_host: 10.10.10.113
+          rke2_type: agent
+
+    # Group all RKE2 nodes together
+    k8s_cluster:
+      children:
+        masters:
+        workers:

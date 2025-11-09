@@ -1,0 +1,8 @@
+---
+# Ansible Galaxy requirements for RKE2 installation
+# Install with: ansible-galaxy install -r requirements.yml
+
+roles:
+  - name: lablabs.rke2
+    src: https://github.com/lablabs/ansible-role-rke2.git
+    version: 1.49.0 # Use latest stable version

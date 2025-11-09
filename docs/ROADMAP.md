@@ -12,32 +12,11 @@ This document tracks planned documentation additions and improvements as the hom
 - YubiKey SSH authentication setup
 - Contributing guidelines
 - **GPU Passthrough configuration** (NVIDIA RTX 2080)
+- **RKE2 Cluster Setup with Cilium CNI** - Complete Ansible-based installation guide
 
 ## Planned Documentation
 
 ### High Priority
-
-#### ⚙️ RKE2 Cluster Setup
-**Status**: Planned  
-**Topics to cover**:
-- RKE2 installation on first master
-- Additional masters setup (HA configuration)
-- Worker nodes joining
-- kubeconfig setup
-- Basic cluster validation
-- Troubleshooting common issues
-
-#### 🔐 Security Hardening
-**Status**: Planned  
-**Topics to cover**:
-- Firewall configuration (Proxmox and VMs)
-- Network segmentation with VLANs
-- Certificate management with cert-manager
-- Secrets management with HashiCorp Vault
-- Regular security updates strategy
-- Backup encryption
-
-### Medium Priority
 
 #### 📊 Monitoring and Observability
 **Status**: Planned  
@@ -48,6 +27,8 @@ This document tracks planned documentation additions and improvements as the hom
 - Log aggregation (Loki or ELK)
 - Node and pod metrics
 - Custom alerts and notifications
+
+### Medium Priority
 
 #### 📦 Storage Solutions
 **Status**: Planned  
@@ -130,7 +111,6 @@ _No requests yet - open an issue to suggest topics!_
 Want to help write documentation? See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines.
 
 Priority topics to contribute:
-- GPU passthrough if you have experience
 - Service-specific guides
 - Troubleshooting sections
 - Performance optimization tips
