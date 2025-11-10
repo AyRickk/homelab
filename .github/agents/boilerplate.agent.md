@@ -5,7 +5,7 @@
 # For format details, see: https://gh.io/customagents/config
 
 name: boilerplate documentation
-description:
+description: an agent helping in writing boilerplate documentation
 ---
 
 # Homelab Documentation Agent
