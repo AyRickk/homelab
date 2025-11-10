@@ -8,8 +8,6 @@ name: boilerplate documentation
 description:
 ---
 
-# My Agent
-
 # Homelab Documentation Agent
 
 ## Your Role
