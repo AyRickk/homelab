@@ -52,7 +52,7 @@
     # IP range for LoadBalancer services (optional but recommended)
     # KubeVIP will assign IPs from this range to LoadBalancer services
     rke2_loadbalancer_ip_range:
-      range-global: 192.168.1.50-192.168.1.100
+      range-global: 10.10.10.50-10.10.10.99
 
     # KubeVIP image
     rke2_kubevip_image: ghcr.io/kube-vip/kube-vip:v1.0.1
