@@ -425,6 +425,7 @@ Comprehensive guides are available in the [`docs/`](./docs) directory:
 | [**Packer**](./docs/packer.md) | VM template creation, customization, troubleshooting |
 | [**Terraform**](./docs/terraform.md) | Infrastructure deployment, state management, workflows |
 | [**RKE2 Installation**](./docs/rke2-installation.md) | Complete guide for installing RKE2 with Cilium CNI using Ansible |
+| [**Ingress Controller**](./docs/ingress-controller.md) | Traefik ingress with automatic TLS using cert-manager and OVH DNS |
 | [**GPU Passthrough**](./docs/gpu-passthrough.md) | NVIDIA RTX 2080 PCIe passthrough configuration |
 | [**Documentation Roadmap**](./docs/ROADMAP.md) | Planned documentation and future topics |
 
@@ -433,10 +434,10 @@ Comprehensive guides are available in the [`docs/`](./docs) directory:
 As this homelab evolves, the following guides will be added:
 
 - ✅ **RKE2 Deployment** - Step-by-step Kubernetes cluster setup with Cilium CNI
+- ✅ **Ingress Controller** - Traefik with automatic TLS using cert-manager and OVH DNS
 - 🔜 **Monitoring Stack** - Prometheus, Grafana, and alerting
 - 🔜 **Storage Solutions** - Longhorn, NFS, and persistent volumes
 - 🔜 **GitOps with ArgoCD** - Automated deployments
-- 🔜 **Ingress Controller** - Traefik or Nginx with TLS
 - 🔜 **Backup & Recovery** - Automated backup strategies
 - 🔜 **Homelab Services** - Common self-hosted applications
 
