@@ -1,0 +1,17 @@
+ports:
+  web:
+    redirections:
+      entryPoint:
+        to: websecure
+        scheme: https
+        permanent: true
+# Add the following lines to enable the Traefik dashboard
+# ingressRoute:
+#   dashboard:
+#     enabled: true
+#     entryPoints:
+#       - websecure
+#     matchRule: Host(`traefik.your-domain.com`) # ← CHANGE HERE
+#     tls:
+#       secretName: traefik-your-domain-com-tls
+

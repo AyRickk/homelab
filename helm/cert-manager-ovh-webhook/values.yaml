@@ -1,0 +1,23 @@
+configVersion: 0.0.2
+
+groupName: "acme.your-domain.com"
+
+certManager:
+  namespace: cert-manager
+  serviceAccountName: cert-manager
+
+# Issuer configuration
+issuers:
+  # ovh ClusterIssuer
+  - name: ovh-cluster-issuer
+    create: true
+    kind: ClusterIssuer
+    namespace: cert-manager
+    acmeServerUrl: https://acme-v02.api.letsencrypt.org/directory
+    email: your-email@example.com # ← CHANGE HERE
+    ovhEndpointName: ovh-eu
+    ovhAuthenticationMethod: application
+    ovhAuthentication:
+      applicationKey: "VOTRE_APPLICATION_KEY" # ← INSERT YOUR APPLICATION KEY HERE
+      applicationSecret: "VOTRE_APPLICATION_SECRET" # ← INSERT YOUR APPLICATION SECRET HERE
+      applicationConsumerKey: "VOTRE_CONSUMER_KEY" # ← INSERT YOUR CONSUMER KEY HERE
