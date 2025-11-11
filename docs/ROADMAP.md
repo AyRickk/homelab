@@ -13,6 +13,7 @@ This document tracks planned documentation additions and improvements as the hom
 - Contributing guidelines
 - **GPU Passthrough configuration** (NVIDIA RTX 2080)
 - **RKE2 Cluster Setup with Cilium CNI** - Complete Ansible-based installation guide
+- **Ingress Controller Setup** - Traefik v3 with cert-manager and OVH DNS webhook for automatic TLS
 
 ## Planned Documentation
 
@@ -50,13 +51,17 @@ This document tracks planned documentation additions and improvements as the hom
 - Multi-environment setup
 
 #### 🌐 Ingress and Load Balancing
-**Status**: Planned  
-**Topics to cover**:
-- MetalLB for LoadBalancer services
-- Traefik or Nginx Ingress Controller
-- TLS/SSL certificate automation
-- External DNS integration
-- Custom domain configuration
+**Status**: ✅ Completed  
+**Topics covered**:
+- ✅ Traefik v3 ingress controller setup
+- ✅ cert-manager for automatic TLS certificates
+- ✅ OVH DNS webhook for DNS-01 challenges
+- ✅ Wildcard certificates
+- ✅ IngressRoute examples
+- ✅ Automatic HTTP to HTTPS redirect
+**Future additions**:
+- MetalLB for LoadBalancer services (planned)
+- External DNS integration (planned)
 
 ### Lower Priority
 
@@ -136,5 +141,5 @@ This roadmap will be updated as:
 
 ---
 
-**Last Updated**: 2025-11-09  
-**Current Documentation Status**: Foundation complete, actively expanding
+**Last Updated**: 2025-11-10  
+**Current Documentation Status**: Foundation complete with ingress setup, actively expanding
